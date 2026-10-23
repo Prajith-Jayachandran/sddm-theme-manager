@@ -162,7 +162,7 @@ class StoreClient:
                         if progress_callback and total > 0:
                             progress_callback(downloaded, total)
 
-            # Install from downloaded archive
+            # Install directly into /usr/share/sddm/themes/ with elevated permissions
             try:
                 inst_ok, path, inst_msg = ThemeInstaller.install_from_archive(temp_filepath)
                 if inst_ok and path and item.preview_url:
@@ -171,16 +171,17 @@ class StoreClient:
                         try:
                             p_req = urllib.request.Request(item.preview_url, headers={"User-Agent": USER_AGENT})
                             with urllib.request.urlopen(p_req, timeout=10) as p_resp:
-                                preview_file.write_bytes(p_resp.read())
+                                preview_bytes = p_resp.read()
+                                if preview_bytes:
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as p_tmp:
+                                        p_tmp.write(preview_bytes)
+                                        p_tmp_path = Path(p_tmp.name)
+                                    from .polkit import run_command
+                                    run_command(["cp", str(p_tmp_path), str(preview_file)], privileged=True)
+                                    run_command(["chmod", "644", str(preview_file)], privileged=True)
+                                    p_tmp_path.unlink(missing_ok=True)
                         except Exception:
                             pass
-
-                # Automatically sync to system SDDM directory (/usr/share/sddm/themes/) with elevated permissions
-                if inst_ok and path:
-                    from .theme_applier import ThemeApplier
-                    sync_ok, sync_msg = ThemeApplier.sync_theme_to_system(path, path.name)
-                    if sync_ok:
-                        inst_msg += f" (Synced to system: /usr/share/sddm/themes/{path.name})"
 
                 return inst_ok, path, inst_msg
             finally:

@@ -39,7 +39,9 @@ polkit.addRule(function(action, subject) {
             // Check command_line string (used by pkexec in polkitd)
             if (cmdLine.indexOf("/etc/sddm.conf") >= 0 ||
                 cmdLine.indexOf("/usr/share/sddm/themes/") >= 0 ||
-                cmdLine.indexOf("/usr/local/share/sddm/themes/") >= 0) {
+                cmdLine.indexOf("/usr/share/sddm") >= 0 ||
+                cmdLine.indexOf("/usr/local/share/sddm") >= 0 ||
+                cmdLine.indexOf("/var/lib/AccountsService") >= 0) {
                 return polkit.Result.YES;
             }
 
@@ -48,7 +50,9 @@ polkit.addRule(function(action, subject) {
                 for (var i = 0; i < argv.length; i++) {
                     if (argv[i].indexOf("/etc/sddm.conf") == 0 ||
                         argv[i].indexOf("/usr/share/sddm/themes/") == 0 ||
-                        argv[i].indexOf("/usr/local/share/sddm/themes/") == 0) {
+                        argv[i].indexOf("/usr/share/sddm") == 0 ||
+                        argv[i].indexOf("/usr/local/share/sddm") == 0 ||
+                        argv[i].indexOf("/var/lib/AccountsService") == 0) {
                         return polkit.Result.YES;
                     }
                 }

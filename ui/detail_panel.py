@@ -40,6 +40,10 @@ class DetailPanel(QFrame):
     reset_background_clicked = Signal(object)  # Theme
     remove_clicked = Signal(object)  # Theme
     open_folder_clicked = Signal(object)  # Theme
+    sync_desktop_clicked = Signal(object)  # Theme
+    tweak_clicked = Signal(object)  # Theme
+    lint_clicked = Signal(object)  # Theme
+    export_clicked = Signal(object)  # Theme
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -165,6 +169,33 @@ class DetailPanel(QFrame):
 
         actions_box.addLayout(bg_btns_layout)
 
+        # Desktop Sync button
+        self.btn_sync_desktop = QPushButton("🔄 Match Desktop Wallpaper")
+        self.btn_sync_desktop.setCursor(Qt.PointingHandCursor)
+        self.btn_sync_desktop.clicked.connect(self._on_sync_desktop_clicked)
+        actions_box.addWidget(self.btn_sync_desktop)
+
+        # Advanced tools row (Tweaker, Linter, Exporter)
+        tools_layout = QHBoxLayout()
+        tools_layout.setSpacing(6)
+
+        self.btn_tweak = QPushButton("⚙️ Customize…")
+        self.btn_tweak.setCursor(Qt.PointingHandCursor)
+        self.btn_tweak.clicked.connect(self._on_tweak_clicked)
+        tools_layout.addWidget(self.btn_tweak)
+
+        self.btn_lint = QPushButton("🛡️ Check")
+        self.btn_lint.setCursor(Qt.PointingHandCursor)
+        self.btn_lint.clicked.connect(self._on_lint_clicked)
+        tools_layout.addWidget(self.btn_lint)
+
+        self.btn_export = QPushButton("📦 Export")
+        self.btn_export.setCursor(Qt.PointingHandCursor)
+        self.btn_export.clicked.connect(self._on_export_clicked)
+        tools_layout.addWidget(self.btn_export)
+
+        actions_box.addLayout(tools_layout)
+
         # Secondary Actions (Open folder, Remove)
         secondary_layout = QHBoxLayout()
         secondary_layout.setSpacing(8)
@@ -257,6 +288,10 @@ class DetailPanel(QFrame):
         # Button states
         self.btn_preview.setEnabled(True)
         self.btn_set_bg.setEnabled(True)
+        self.btn_sync_desktop.setEnabled(True)
+        self.btn_tweak.setEnabled(True)
+        self.btn_lint.setEnabled(True)
+        self.btn_export.setEnabled(True)
         self.btn_open_folder.setEnabled(True)
         self.btn_remove.setEnabled(True)
 
@@ -382,3 +417,19 @@ class DetailPanel(QFrame):
     def _on_open_folder_clicked(self):
         if self.current_theme:
             self.open_folder_clicked.emit(self.current_theme)
+
+    def _on_sync_desktop_clicked(self):
+        if self.current_theme:
+            self.sync_desktop_clicked.emit(self.current_theme)
+
+    def _on_tweak_clicked(self):
+        if self.current_theme:
+            self.tweak_clicked.emit(self.current_theme)
+
+    def _on_lint_clicked(self):
+        if self.current_theme:
+            self.lint_clicked.emit(self.current_theme)
+
+    def _on_export_clicked(self):
+        if self.current_theme:
+            self.export_clicked.emit(self.current_theme)

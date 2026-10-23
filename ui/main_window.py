@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl
+from PySide6.QtCore import QFileSystemWatcher, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
@@ -59,9 +59,43 @@ class MainWindow(QMainWindow):
         self.shortcut_esc_preview = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.shortcut_esc_preview.activated.connect(self._on_esc_pressed)
 
+        # Setup File System Watcher for live automatic tracking of theme changes
+        self.fs_watcher = QFileSystemWatcher(self)
+        self._fs_debounce_timer = QTimer(self)
+        self._fs_debounce_timer.setSingleShot(True)
+        self._fs_debounce_timer.setInterval(300)
+        self._fs_debounce_timer.timeout.connect(self._on_fs_timeout)
+        self.fs_watcher.directoryChanged.connect(self._on_fs_changed)
+        self.fs_watcher.fileChanged.connect(self._on_fs_changed)
+        self._init_fs_watcher()
+
         self.current_selected_theme: Optional[Theme] = None
         self._init_ui()
         self.refresh_themes()
+
+    def _init_fs_watcher(self):
+        watch_paths = [
+            Path("/usr/share/sddm/themes"),
+            ThemeScanner.get_user_themes_dir(),
+            Path("/etc/sddm.conf.d"),
+            Path("/etc/sddm.conf"),
+        ]
+        for p in watch_paths:
+            if p.exists():
+                self.fs_watcher.addPath(str(p))
+
+    def _on_fs_changed(self, path: str):
+        p = Path(path)
+        if p.exists():
+            if p.is_dir() and path not in self.fs_watcher.directories():
+                self.fs_watcher.addPath(path)
+            elif p.is_file() and path not in self.fs_watcher.files():
+                self.fs_watcher.addPath(path)
+        self._fs_debounce_timer.start()
+
+    def _on_fs_timeout(self):
+        sel_path = self.current_selected_theme.path if self.current_selected_theme else None
+        self.refresh_themes(select_path=sel_path)
 
     def _init_ui(self):
         central_widget = QWidget()
@@ -93,6 +127,10 @@ class MainWindow(QMainWindow):
         self.detail_panel.reset_background_clicked.connect(self.reset_theme_background)
         self.detail_panel.remove_clicked.connect(self.remove_theme)
         self.detail_panel.open_folder_clicked.connect(self.open_theme_folder)
+        self.detail_panel.sync_desktop_clicked.connect(self.sync_desktop_wallpaper)
+        self.detail_panel.tweak_clicked.connect(self.open_tweaker_dialog)
+        self.detail_panel.lint_clicked.connect(self.open_linter_dialog)
+        self.detail_panel.export_clicked.connect(self.export_theme_archive)
 
         self.splitter.addWidget(self.theme_grid)
         self.splitter.addWidget(self.detail_panel)
@@ -189,18 +227,36 @@ class MainWindow(QMainWindow):
         btn_store.clicked.connect(self.open_store_dialog)
         toolbar.addWidget(btn_store)
 
-        # Action: Sync All Themes to SDDM System
-        btn_sync_all = QPushButton(" ⟳ Sync to SDDM")
-        btn_sync_all.setToolTip("Sync all user-installed themes to /usr/share/sddm/themes/")
-        btn_sync_all.setCursor(Qt.PointingHandCursor)
-        btn_sync_all.clicked.connect(self.sync_all_themes)
-        toolbar.addWidget(btn_sync_all)
+        toolbar.addSeparator()
 
-        # Action: Refresh
-        btn_refresh = QPushButton(" Refresh")
-        btn_refresh.setCursor(Qt.PointingHandCursor)
-        btn_refresh.clicked.connect(self.refresh_themes)
-        toolbar.addWidget(btn_refresh)
+        # Action: User Avatar
+        btn_avatar = QPushButton(" 👤 Avatar")
+        btn_avatar.setToolTip("Configure SDDM user login picture")
+        btn_avatar.setCursor(Qt.PointingHandCursor)
+        btn_avatar.clicked.connect(self.open_avatar_dialog)
+        toolbar.addWidget(btn_avatar)
+
+        # Action: Day / Night Scheduler
+        btn_scheduler = QPushButton(" 🌓 Schedule")
+        btn_scheduler.setToolTip("Automate day and night theme switching")
+        btn_scheduler.setCursor(Qt.PointingHandCursor)
+        btn_scheduler.clicked.connect(self.open_scheduler_dialog)
+        toolbar.addWidget(btn_scheduler)
+
+        # Action: Multi-Monitor Displays
+        btn_display = QPushButton(" 🖥️ Displays")
+        btn_display.setToolTip("Configure primary monitor for SDDM login screen")
+        btn_display.setCursor(Qt.PointingHandCursor)
+        btn_display.clicked.connect(self.open_display_dialog)
+        toolbar.addWidget(btn_display)
+
+        # Action: Daemon Settings
+        btn_daemon = QPushButton(" 🎛️ Settings")
+        btn_daemon.setToolTip("Configure SDDM daemon, autologin, and session options")
+        btn_daemon.setCursor(Qt.PointingHandCursor)
+        btn_daemon.clicked.connect(self.open_daemon_dialog)
+        toolbar.addWidget(btn_daemon)
+
 
         # Spacer
         spacer = QWidget()
@@ -508,10 +564,6 @@ class MainWindow(QMainWindow):
 
         ok, installed_path, msg = ThemeInstaller.install_from_archive(file_path)
         if ok and installed_path:
-            # Sync to system path with elevated privileges so SDDM can immediately load it
-            sync_ok, sync_msg = ThemeApplier.sync_theme_to_system(installed_path, installed_path.name)
-            if sync_ok:
-                msg += f"\n\n✓ Synchronized to SDDM system folder: /usr/share/sddm/themes/{installed_path.name}"
             QMessageBox.information(self, "Theme Installed", msg)
             self.refresh_themes(select_path=installed_path)
         else:
@@ -551,6 +603,70 @@ class MainWindow(QMainWindow):
     def open_theme_folder(self, theme: Theme):
         """Opens theme folder in default file manager."""
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(theme.path)))
+
+    def sync_desktop_wallpaper(self, theme: Theme):
+        """Syncs the current desktop wallpaper to the active or selected theme."""
+        from core.desktop_wallpaper import DesktopWallpaperDetector
+        ok, msg = DesktopWallpaperDetector.sync_desktop_to_theme(theme.path)
+        if ok:
+            QMessageBox.information(self, "Wallpaper Synced", msg)
+            self.refresh_themes(select_path=theme.path)
+        else:
+            QMessageBox.warning(self, "Desktop Wallpaper Notice", msg)
+
+    def open_tweaker_dialog(self, theme: Theme):
+        """Opens the visual theme customizer for the selected theme."""
+        from ui.tweaker_dialog import ThemeTweakerDialog
+        dlg = ThemeTweakerDialog(theme, self)
+        if dlg.exec():
+            self.refresh_themes(select_path=theme.path)
+
+    def open_linter_dialog(self, theme: Theme):
+        """Opens the compatibility diagnostics and auto-patcher."""
+        from ui.linter_dialog import LinterDialog
+        dlg = LinterDialog(theme, self)
+        if dlg.exec():
+            self.refresh_themes(select_path=theme.path)
+
+    def export_theme_archive(self, theme: Theme):
+        """Exports the selected theme as a portable .tar.gz bundle."""
+        from core.exporter import ThemeExporter
+        save_path, _ = QFileDialog.getSaveFileName(
+            self,
+            f"Export Theme '{theme.name}'",
+            str(Path.home() / f"{theme.id}.tar.gz"),
+            "Theme Archive (*.tar.gz *.tar.zst);;All Files (*)",
+        )
+        if save_path:
+            ok, msg = ThemeExporter.export_theme_bundle(theme.path, Path(save_path))
+            if ok:
+                QMessageBox.information(self, "Export Complete", msg)
+            else:
+                QMessageBox.critical(self, "Export Failed", msg)
+
+    def open_avatar_dialog(self):
+        """Opens the user profile avatar manager."""
+        from ui.avatar_dialog import AvatarDialog
+        dlg = AvatarDialog(self)
+        dlg.exec()
+
+    def open_scheduler_dialog(self):
+        """Opens the Day/Night theme schedule manager."""
+        from ui.scheduler_dialog import SchedulerDialog
+        dlg = SchedulerDialog(self)
+        dlg.exec()
+
+    def open_display_dialog(self):
+        """Opens the multi-monitor display setup."""
+        from ui.display_dialog import DisplayDialog
+        dlg = DisplayDialog(self)
+        dlg.exec()
+
+    def open_daemon_dialog(self):
+        """Opens the SDDM daemon autologin & session settings."""
+        from ui.daemon_dialog import DaemonConfigDialog
+        dlg = DaemonConfigDialog(self)
+        dlg.exec()
 
     def closeEvent(self, event):
         """Ensure preview process is cleanly terminated on window close."""

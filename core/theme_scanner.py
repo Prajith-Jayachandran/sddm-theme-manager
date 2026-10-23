@@ -159,24 +159,23 @@ class ThemeScanner:
                         theme.is_active = True
                     themes_map[str(theme.path)] = theme
 
-        # Deduplicate themes sharing the same id (e.g. copied to /usr/share and in ~/.local)
+        # Deduplicate themes sharing the same id (prioritize system installation)
         themes_by_id: dict[str, Theme] = {}
         for theme in themes_map.values():
             if theme.id not in themes_by_id:
                 themes_by_id[theme.id] = theme
             else:
                 existing = themes_by_id[theme.id]
-                # If one is active, prioritize the active one
-                if theme.is_active and not existing.is_active:
+                # Prioritize system installation over user directory copy
+                if theme.is_system and not existing.is_system:
                     themes_by_id[theme.id] = theme
-                # If existing has no preview but this one does, prefer the one with preview
+                elif not theme.is_system and existing.is_system:
+                    continue
+                elif theme.is_active and not existing.is_active:
+                    themes_by_id[theme.id] = theme
                 elif not existing.preview_path and theme.preview_path:
                     themes_by_id[theme.id] = theme
-                # Prefer user version if user has custom overrides
                 elif theme.custom_background and not existing.custom_background:
-                    themes_by_id[theme.id] = theme
-                # Otherwise prefer system installation if available
-                elif theme.is_system and not existing.is_system:
                     themes_by_id[theme.id] = theme
 
         # Verify system installation status for all themes

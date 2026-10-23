@@ -15,12 +15,12 @@ from .polkit import remove_path_privileged, write_file_privileged
 class BackgroundManager:
     """Manages theme.conf.user background overrides for SDDM themes."""
 
-    SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp"}
+    SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp", ".gif", ".mp4", ".webm", ".mkv"}
 
     @classmethod
     def set_background(cls, theme_dir: Path, image_path: Path | str) -> Tuple[bool, str]:
         """
-        Sets the custom background image for a theme in theme.conf.user.
+        Sets the custom background image or video for a theme in theme.conf.user.
         Preserves other keys and sections in theme.conf.user.
         """
         img_p = Path(image_path).resolve()
@@ -28,7 +28,12 @@ class BackgroundManager:
             return False, f"Image file does not exist: {img_p}"
 
         if img_p.suffix.lower() not in cls.SUPPORTED_EXTENSIONS:
-            return False, f"Unsupported image format: {img_p.suffix}. Supported: {', '.join(cls.SUPPORTED_EXTENSIONS)}"
+            return False, f"Unsupported image format: {img_p.suffix}. Supported: {', '.join(sorted(cls.SUPPORTED_EXTENSIONS))}"
+
+        # Delegate video formats to VideoBackgroundManager
+        from .video_background import VideoBackgroundManager
+        if VideoBackgroundManager.is_video(img_p):
+            return VideoBackgroundManager.set_video_background(theme_dir, img_p)
 
         # Ensure image has world-read permissions so SDDM user can read it
         try:

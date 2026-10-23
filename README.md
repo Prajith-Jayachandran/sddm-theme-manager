@@ -8,48 +8,62 @@ Works identically on **KDE Plasma**, **GNOME**, **Hyprland**, and other window m
 
 ## ✨ Features
 
-- **Theme Browser & Intelligent Scanner**:
+- **Theme Browser & Real-Time Filesystem Watcher**:
   - Automatically scans `/usr/share/sddm/themes/`, `/usr/local/share/sddm/themes/`, and `~/.local/share/sddm/themes/`.
-  - Discovers previews across non-standard filenames (`preview.*`, `screenshot.*`, `elarun.jpg`), subdirectories (`screenshots/`, `images/`, `backgrounds/`, `assets/`), and extracts video background frames (`.mp4`, `.webm`) via `ffmpeg`.
-  - Built-in fallback thumbnail generator: guarantees that every theme has an attractive visual preview card.
-  - Displays preview thumbnails, theme names, descriptions, and Qt version tags (Qt 6 / Qt 5).
-  - Clear visual indicator for the currently active SDDM theme and `⚠️ NEEDS SYNC` status indicators.
-  - Real-time search and filter by name, Qt version, and installation date.
+  - Built-in `QFileSystemWatcher` live-tracks directory changes and refreshes the UI automatically without manual reload.
+  - Discovers previews across non-standard filenames (`preview.*`, `screenshot.*`), subdirectories (`screenshots/`, `images/`, `backgrounds/`, `assets/`), and extracts video background frames (`.mp4`, `.webm`) via `ffmpeg`.
+  - Dynamic fallback thumbnail generator: guarantees every theme has an attractive visual preview card.
+  - Real-time search and filter by name, Qt version (Qt 6 / Qt 5), and installation date.
 
-- **Universal Pipeline for Downloads & Archives**:
-  - **KDE Store Integration**: Search and install hundreds of online themes via KDE Store / Pling OCS API.
-  - **Archive Installer**: Extract `.tar.gz`, `.tgz`, `.tar.xz`, and `.zip` themes seamlessly.
-  - **Automated Provisioning**: Every downloaded or installed theme is automatically normalized with world-readable permissions (`0755` directories, `0644` files) and synchronized to `/usr/share/sddm/themes/` so SDDM can load it immediately.
+- **Direct-to-System Installation & Complete 1-Click Removal**:
+  - **Direct System Storage**: All theme downloads (KDE Store) and archive installs (`.tar.gz`, `.zip`) install straight into `/usr/share/sddm/themes/` with permissions normalized (`0755` directories, `0644` files) via Polkit (`pkexec`).
+  - **Unified Complete Deletion**: Deleting any theme permanently wipes the system directory in `/usr/share/sddm/themes/` and purges any legacy copy in `~/.local/share/sddm/themes/` simultaneously.
 
-- **Automated SDDM System Synchronization & Health Checker**:
-  - SDDM runs as a system daemon (`sddm` user) and cannot traverse mode `700` user home directories.
-  - Real-time health monitoring detects when an active or selected theme is missing from `/usr/share/sddm/themes/`.
-  - 1-click **"⚡ Fix & Sync to SDDM Now"** emergency banner and **"Sync to SDDM"** toolbar/detail buttons.
-  - Dynamic button states allowing active themes to be re-applied or re-synchronized at any time.
+- **🎨 Desktop Synchronization & Ricing Tools**:
+  - **Match Desktop Wallpaper**: 1-click sync that automatically detects your active desktop wallpaper from **KDE Plasma**, **Hyprland** (`swww`/`hyprpaper`), **GNOME**, **Sway**, **Feh**, **Nitrogen**, or **XFCE** and sets it as the SDDM background.
+  - **Dynamic Palette & Pywal Accent Colors**: Samples dominant and accent colors from wallpapers using native `QImage` pixel analysis, and imports color schemes directly from Pywal (`~/.cache/wal/colors.json`).
+  - **Animated & Video Wallpapers**: Full support for `.mp4`, `.webm`, `.mkv`, and `.gif` animated backgrounds with automatic static poster frame generation for card thumbnails and greeter fallbacks.
+
+- **⚙️ Visual Theme Customizer (Theme Tweaker)**:
+  - Intuitive dialog to configure `theme.conf.user` parameters without touching raw text files:
+    - **Clock & Time**: 12-hour vs 24-hour format, toggle seconds, show/hide clock.
+    - **Layout Alignment**: Center, left, or right login box positioning.
+    - **Visual Effects**: Background blur radius slider (0–50px) and dim opacity slider (0–80%).
+    - **Typography**: Custom font family picker and base font size spinbox.
+    - **Color Overrides**: Interactive accent color picker.
+
+- **👤 User Profile Avatar Manager**:
+  - Select, preview, and apply circular user login avatars.
+  - Automatically provisions both legacy `~/.face.icon` and modern AccountsService (`/var/lib/AccountsService/icons/<user>` and `/var/lib/AccountsService/users/<user>`).
+
+- **🌓 Day / Night Theme Scheduler**:
+  - Automatically transitions between a light theme in the daytime and a dark theme in the evening.
+  - Backed by an automated background systemd user timer (`sddm-theme-scheduler.timer`).
+  - Supports headless execution via `sddm-theme-manager --apply-scheduled`.
+
+- **🛡️ Qt5 vs Qt6 Compatibility Linter & Auto-Patcher**:
+  - Scans QML files in downloaded themes to prevent black screens and crashes on modern Qt6 greeters.
+  - Flags legacy imports (e.g. `QtGraphicalEffects 1.0`) and recommends missing Arch Linux runtime packages (e.g. `qt6-5compat`).
+  - 1-click **"🛡️ Auto-Patch for Qt 6"** button upgrades imports to `Qt5Compat.GraphicalEffects 6.0` and creates safety `.qml.bak` backups.
+
+- **📦 1-Click Theme Backup, Export & Sharing**:
+  - Bundles any customized theme, custom background, user overrides, and a `manifest.json` into a shareable `.tar.gz` or `.tar.zst` archive for community sharing.
+  - Seamless 1-click import that extracts and registers shared bundles.
+
+- **🖥️ Multi-Monitor Display Setup**:
+  - Discovers all connected displays (e.g., `eDP-1`, `DP-1`, `HDMI-A-1`) via `xrandr` and DRM sysfs.
+  - Configures the primary screen in `/usr/share/sddm/scripts/Xsetup` so the SDDM login box always appears on the intended display.
+
+- **🎛️ SDDM Daemon Control Panel (Autologin & Sessions)**:
+  - Discovers installed Wayland and X11 sessions (e.g. `Hyprland`, `Plasma`).
+  - Configures autologin user, autologin session, and relogin behavior in `/etc/sddm.conf.d/20-autologin.conf`.
+  - Manages boot NumLock state (`none`, `on`, `off`) and user persistence in `/etc/sddm.conf.d/00-general.conf`.
 
 - **Wayland-Compatible Live Greeter Preview**:
   - Launches `sddm-greeter-qt6 --test-mode --theme <path>` (or `sddm-greeter` for Qt 5) in a non-blocking subprocess.
   - Floating top-center exit overlay with periodic re-raise to ensure visibility over full-screen greeters on Wayland (KWin) and X11.
-  - In-app emergency top banner with instant `[ ✕ Stop Live Preview ]` button.
-  - Window manager `Alt+F4` enabled via `--qwindowtitle` and global `Esc` shortcut.
+  - In-app emergency top banner with instant `[ ✕ Stop Live Preview ]` button and global `Esc` shortcut.
   - Does **not** require root privileges for preview rendering.
-
-- **Apply Theme with Configuration Priority**:
-  - SDDM configuration precedence: writes a drop-in file to `/etc/sddm.conf.d/10-theme.conf` with `[Theme] Current=<theme-name>`.
-  - Preserves other sections and keys if the drop-in file already exists.
-  - Prompts to safely restart SDDM (`systemctl restart sddm`) with session restart warnings.
-
-- **Custom Wallpaper / Background**:
-  - Select any wallpaper (PNG, JPG, WebP, SVG, BMP) for the theme.
-  - Writes a `theme.conf.user` override file inside the theme directory, preserving other user overrides.
-  - Provides a 1-click **Reset to Theme Default** button.
-
-- **Theme Remover**:
-  - Safely deletes themes (user themes removed directly, synced system copies removed cleanly via elevated Polkit).
-
-- **DE-Agnostic, Polkit-Secured**:
-  - Standard user permissions for browsing, previewing, and user-theme management.
-  - Uses `pkexec` strictly for system-level actions (`/etc/sddm.conf.d/` writes, `/usr/share/sddm/themes/` synchronization, and SDDM service restarts).
 
 ---
 
@@ -339,6 +353,12 @@ sddm-theme-manager [OPTIONS]
 ```
 
 ### Options:
+- `--apply-scheduled`:
+  Headless automation flag: checks current time against Day/Night scheduler configuration (`~/.config/sddm-theme-manager/scheduler.json`) and applies the appropriate theme.
+  *Used by systemd user timers.*
+  ```bash
+  sddm-theme-manager --apply-scheduled
+  ```
 - `--no-polkit`:
   Development & testing fallback that bypasses `pkexec` and calls elevated commands with `sudo` instead.
   *Prints a warning on startup.*
@@ -404,6 +424,26 @@ Existing custom sections and keys are preserved without touching the system `/et
 
 ## 📋 Changelog & Recent Updates
 
+### v1.1.0
+- **Transformation into Complete SDDM Control Center with 10 New Features**:
+  1. **Desktop Wallpaper Synchronization**: 1-click sync from active desktop environment (KDE Plasma, Hyprland, GNOME, Sway, Feh, Nitrogen, XFCE) directly to SDDM background.
+  2. **Dynamic Palette & Pywal Accent Color Extraction**: Samples dominant and accent colors via native Qt `QImage` pixel analysis, and reads Pywal cache (`~/.cache/wal/colors.json`).
+  3. **Animated & Video Wallpapers**: Full support for `.mp4`, `.webm`, `.mkv`, and `.gif` animated backgrounds with poster thumbnail extraction.
+  4. **Visual Theme Customizer (Theme Tweaker)**: Interactive GUI dialog to customize clock format (12h/24h), login box alignment, blur radius slider, dimming opacity slider, font picker, and base size.
+  5. **User Profile Avatar Manager**: Circular crop tool and manager for user login icons in both `~/.face.icon` and AccountsService (`/var/lib/AccountsService/icons/<user>`).
+  6. **Day / Night Automated Theme Scheduler**: Scheduled transitions between light and dark themes backed by a lightweight systemd user timer (`sddm-theme-scheduler.timer`) and `--apply-scheduled` CLI mode.
+  7. **Qt5 vs Qt6 Compatibility Linter & Auto-Patcher**: Scans QML files for deprecated modules (`QtGraphicalEffects`) and offers 1-click auto-patching to `Qt5Compat.GraphicalEffects 6.0` with safety `.bak` backups.
+  8. **Multi-Monitor Display Manager**: GUI to select primary SDDM display across connected outputs and configure `/usr/share/sddm/scripts/Xsetup`.
+  9. **SDDM Daemon & Autologin Control Panel**: Manage autologin user, session choice (scans Wayland & X11 sessions), and boot NumLock state in `/etc/sddm.conf.d/`.
+  10. **1-Click Theme Backup, Exporter & Sharing**: Packages custom themes, wallpapers, and overrides into shareable `.tar.gz` / `.tar.zst` bundles with `manifest.json`.
+- **Direct-to-System Storage Architecture**:
+  - All downloads and archive installations now extract directly into `/usr/share/sddm/themes/` with permissions pre-normalized, eliminating duplicate entries.
+  - 1-click theme removal completely wipes `/usr/share/sddm/themes/` and purges any legacy user copy simultaneously.
+- **Real-Time Filesystem Live Tracking**:
+  - Integrated `QFileSystemWatcher` to track `/usr/share/sddm/themes`, user directory, and `/etc/sddm.conf.d/`. External changes update the UI automatically without manual refresh.
+- **Automated Test Suite Expansion**:
+  - Expanded test suite from 126 to **195 automated unit and integration tests**, achieving 100% pass rate.
+
 ### v1.0.2
 - **Universal Pipeline for Future Theme Downloads**:
   - Every theme downloaded from the KDE Store or installed from a `.tar.gz`/`.zip` file is now automatically provisioned with **both** system privileges and visual previews.
@@ -453,15 +493,32 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── theme_scanner.py             # Discovers themes & detects active theme
 │   ├── theme_applier.py             # Writes drop-in config & restarts SDDM
 │   ├── background.py                # Manages theme.conf.user overrides
-│   ├── installer.py                 # Extracts archives & removes themes
+│   ├── installer.py                 # Direct /usr/share/sddm installer & 1-click cleaner
 │   ├── preview.py                   # Manages sddm-greeter --test-mode subprocess
 │   ├── polkit.py                    # Elevated pkexec / sudo runner
-│   └── store_client.py              # KDE Store / Pling OCS API client
+│   ├── store_client.py              # KDE Store / Pling OCS API client
+│   ├── desktop_wallpaper.py         # Multi-DE active wallpaper detector & synchronizer
+│   ├── color_palette.py             # Dominant palette & Pywal color extractor
+│   ├── video_background.py          # Animated & video wallpaper manager (MP4/WebM/GIF)
+│   ├── theme_configurator.py        # Visual theme tweaker engine (clock, blur, dim, font)
+│   ├── avatar_manager.py            # User profile login picture manager
+│   ├── scheduler.py                 # Automated Day/Night theme switcher & systemd timer
+│   ├── linter.py                    # Qt5 vs Qt6 compatibility scanner & auto-patcher
+│   ├── exporter.py                  # Portable theme bundle packager (.tar.gz/.tar.zst)
+│   ├── display_manager.py           # Multi-monitor display detector & Xsetup configurator
+│   └── daemon_config.py             # SDDM daemon settings, autologin, & session manager
 ├── ui/
-│   ├── main_window.py               # Main window & layout coordination
+│   ├── main_window.py               # Main window, toolbar, status bar & live watcher
 │   ├── theme_grid.py                # Scrollable card grid with filter & sort
-│   ├── detail_panel.py              # Metadata & action buttons
+│   ├── detail_panel.py              # Metadata panel & quick action tool buttons
 │   ├── store_dialog.py              # KDE Store browser modal
+│   ├── tweaker_dialog.py            # Interactive visual theme customizer dialog
+│   ├── avatar_dialog.py             # Circular profile avatar cropping dialog
+│   ├── scheduler_dialog.py          # Day/Night automated schedule dialog
+│   ├── linter_dialog.py             # Theme compatibility report & auto-patcher modal
+│   ├── display_dialog.py            # Primary monitor selection dialog
+│   ├── daemon_dialog.py             # SDDM daemon autologin & session settings dialog
+│   ├── preview_overlay.py           # Floating exit pill during live greeter preview
 │   └── styles.qss                   # Modern DE-agnostic dark/light stylesheet
 ├── polkit/
 │   └── 40-sddm-theme-manager.rules   # JavaScript Polkit rule file

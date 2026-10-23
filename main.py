@@ -24,6 +24,11 @@ def parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        "--apply-scheduled",
+        action="store_true",
+        help="Headless execution: check Day/Night schedule and apply the scheduled theme",
+    )
+    parser.add_argument(
         "--no-polkit",
         action="store_true",
         help="Development fallback: bypass pkexec and call commands with sudo instead (prints warning)",
@@ -44,6 +49,12 @@ def parse_args():
 def main():
     args = parse_args()
     PolkitConfig.set_options(no_polkit=args.no_polkit, debug=args.debug)
+
+    if args.apply_scheduled:
+        from core.scheduler import DayNightScheduler
+        ok, msg = DayNightScheduler.apply_scheduled()
+        print(f"[{'OK' if ok else 'ERROR'}] {msg}")
+        sys.exit(0 if ok else 1)
 
     # Set application metadata
     app = QApplication(sys.argv)

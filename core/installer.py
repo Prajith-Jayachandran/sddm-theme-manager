@@ -23,9 +23,13 @@ class ThemeInstaller:
     """Installs themes from archives into user themes directory and manages uninstallation."""
 
     @classmethod
-    def install_from_archive(cls, archive_path: Path | str) -> Tuple[bool, Optional[Path], str]:
+    def install_from_archive(
+        cls,
+        archive_path: Path | str,
+        dest_base: Optional[Path | str] = None,
+    ) -> Tuple[bool, Optional[Path], str]:
         """
-        Extracts a theme archive into ~/.local/share/sddm/themes/.
+        Extracts a theme archive directly into /usr/share/sddm/themes/ (or custom dest_base).
         Returns (success, installed_theme_path, message).
         """
         arch = Path(archive_path).resolve()
@@ -37,7 +41,8 @@ class ThemeInstaller:
         if not is_supported:
             return False, None, f"Unsupported archive format. Supported formats: {', '.join(SUPPORTED_ARCHIVES)}"
 
-        dest_base = ThemeScanner.get_user_themes_dir()
+        dest_dir = Path(dest_base) if dest_base is not None else Path("/usr/share/sddm/themes")
+        is_system_dest = str(dest_dir).startswith("/usr")
 
         with tempfile.TemporaryDirectory(prefix="sddm_theme_extract_") as temp_dir:
             temp_path = Path(temp_dir)
@@ -76,29 +81,11 @@ class ThemeInstaller:
                 if not target_name:
                     target_name = "installed-theme"
 
-            final_dest = dest_base / target_name
+            final_dest = dest_dir / target_name
 
-            # If folder already exists, remove it or replace
-            if final_dest.exists():
-                try:
-                    shutil.rmtree(final_dest)
-                except Exception as e:
-                    return False, None, f"Cannot overwrite existing theme directory '{final_dest.name}': {e}"
-
-            # 4. Move extracted theme to destination
+            # 4. Pre-normalize permissions inside the temp directory
             try:
-                shutil.copytree(theme_source_dir, final_dest)
-            except Exception as e:
-                return False, None, f"Failed to install theme files to {final_dest}: {e}"
-
-            # 5. Verify final destination has theme files
-            if not ThemeScanner.is_valid_theme_dir(final_dest):
-                shutil.rmtree(final_dest, ignore_errors=True)
-                return False, None, "Installed files do not form a valid SDDM theme."
-
-            # Normalize file permissions in user space (world-readable for SDDM daemon)
-            try:
-                for root, dirs, files in os.walk(final_dest):
+                for root, dirs, files in os.walk(theme_source_dir):
                     for d in dirs:
                         try:
                             os.chmod(os.path.join(root, d), 0o755)
@@ -112,10 +99,43 @@ class ThemeInstaller:
             except Exception:
                 pass
 
-            # 6. Ensure theme has a preview.png for card thumbnail grid
-            cls._ensure_preview_exists(final_dest)
+            # 5. Ensure theme has a preview.png inside temp directory
+            cls._ensure_preview_exists(theme_source_dir)
 
-            return True, final_dest, f"Theme '{final_dest.name}' installed successfully."
+            # 6. Move extracted theme to destination
+            if is_system_dest:
+                from .polkit import copy_directory_privileged
+                if final_dest.exists():
+                    remove_path_privileged(final_dest)
+
+                cp_ok, cp_msg = copy_directory_privileged(theme_source_dir, final_dest)
+                if not cp_ok:
+                    return False, None, f"Failed to install theme to {final_dest}: {cp_msg}"
+
+                # Purge any legacy user copy so only one copy exists
+                user_copy = ThemeScanner.get_user_themes_dir() / target_name
+                if user_copy.exists():
+                    shutil.rmtree(user_copy, ignore_errors=True)
+            else:
+                if final_dest.exists():
+                    try:
+                        shutil.rmtree(final_dest)
+                    except Exception as e:
+                        return False, None, f"Cannot overwrite existing theme directory '{final_dest.name}': {e}"
+                try:
+                    shutil.copytree(theme_source_dir, final_dest)
+                except Exception as e:
+                    return False, None, f"Failed to install theme files to {final_dest}: {e}"
+
+            # 7. Verify final destination has theme files
+            if not ThemeScanner.is_valid_theme_dir(final_dest):
+                if is_system_dest:
+                    remove_path_privileged(final_dest)
+                else:
+                    shutil.rmtree(final_dest, ignore_errors=True)
+                return False, None, "Installed files do not form a valid SDDM theme."
+
+            return True, final_dest, f"Theme '{final_dest.name}' installed successfully into {dest_dir}."
 
     @classmethod
     def _ensure_preview_exists(cls, theme_dir: Path):
@@ -249,30 +269,36 @@ class ThemeInstaller:
     def remove_theme(cls, theme_path: Path | str) -> Tuple[bool, str]:
         """
         Removes a theme directory.
-        Uses elevated privileges (polkit/sudo) for system directories,
-        or normal file operations for user directories.
+        Removes from /usr/share/sddm/themes/ (elevated) AND also checks and purges
+        any corresponding legacy copy in ~/.local/share/sddm/themes/ so no duplicates linger.
         """
         t_path = Path(theme_path).resolve()
-        if not t_path.exists():
-            return False, f"Theme path does not exist: {t_path}"
-
+        theme_name = t_path.name
         is_system = str(t_path).startswith("/usr")
+
+        # 1. Remove the targeted directory
         if is_system:
             success, msg = remove_path_privileged(t_path)
-            if success:
-                return True, f"System theme '{t_path.name}' removed."
-            else:
-                return False, f"Failed to remove system theme: {msg}"
+            if not success:
+                return False, f"Failed to remove system theme '{theme_name}': {msg}"
         else:
             try:
                 shutil.rmtree(t_path)
-                # Clean up corresponding system copy if it was synced
-                sys_copy = Path("/usr/share/sddm/themes") / t_path.name
-                if sys_copy.exists():
-                    remove_path_privileged(sys_copy)
-                return True, f"Theme '{t_path.name}' removed successfully."
             except Exception as e:
-                return False, f"Failed to remove user theme '{t_path.name}': {e}"
+                return False, f"Failed to remove user theme '{theme_name}': {e}"
+
+        # 2. Always clean up corresponding copies in both places
+        # Clean user copy if it exists
+        user_copy = ThemeScanner.get_user_themes_dir() / theme_name
+        if user_copy.exists():
+            shutil.rmtree(user_copy, ignore_errors=True)
+
+        # Clean system copy if it exists
+        sys_copy = Path("/usr/share/sddm/themes") / theme_name
+        if sys_copy.exists():
+            remove_path_privileged(sys_copy)
+
+        return True, f"Theme '{theme_name}' removed completely from system."
 
     @classmethod
     def _locate_theme_root(cls, root_dir: Path) -> Optional[Path]:

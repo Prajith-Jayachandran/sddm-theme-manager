@@ -154,6 +154,59 @@ def remove_path_privileged(filepath: str | Path) -> Tuple[bool, str]:
         return False, err or out or f"Removal failed with exit code {rc}"
 
 
+def copy_directory_privileged(src: str | Path, dest: str | Path) -> Tuple[bool, str]:
+    """
+    Copies a directory to a system destination requiring root permissions.
+    Uses 'pkexec /usr/bin/cp -r <src> <dest>' and normalizes permissions.
+    """
+    src_p = Path(src).resolve()
+    dest_p = Path(dest).resolve()
+    parent = dest_p.parent
+
+    # Ensure parent directory exists
+    if not parent.exists():
+        mkdir_bin = shutil.which("mkdir") or "/usr/bin/mkdir"
+        rc, out, err = run_command([mkdir_bin, "-p", str(parent)], privileged=True)
+        if rc != 0:
+            return False, f"Failed to create parent directory {parent}: {err or out}"
+
+    cp_bin = shutil.which("cp") or "/usr/bin/cp"
+    chmod_bin = shutil.which("chmod") or "/usr/bin/chmod"
+
+    rc, out, err = run_command([cp_bin, "-r", str(src_p), str(dest_p)], privileged=True)
+    if rc != 0:
+        return False, err or out or f"Failed to copy to {dest_p}"
+
+    # Normalize permissions so sddm daemon can read all files
+    run_command([chmod_bin, "-R", "a+rX", str(dest_p)], privileged=True)
+    return True, "Directory copied successfully."
+
+
+def copy_file_privileged(src: str | Path, dest: str | Path) -> Tuple[bool, str]:
+    """
+    Copies a single file to a destination requiring elevated permissions.
+    """
+    src_p = Path(src).resolve()
+    dest_p = Path(dest).resolve()
+    parent = dest_p.parent
+
+    if not parent.exists():
+        mkdir_bin = shutil.which("mkdir") or "/usr/bin/mkdir"
+        rc, out, err = run_command([mkdir_bin, "-p", str(parent)], privileged=True)
+        if rc != 0:
+            return False, f"Failed to create parent directory {parent}: {err or out}"
+
+    cp_bin = shutil.which("cp") or "/usr/bin/cp"
+    chmod_bin = shutil.which("chmod") or "/usr/bin/chmod"
+
+    rc, out, err = run_command([cp_bin, "-f", str(src_p), str(dest_p)], privileged=True)
+    if rc != 0:
+        return False, err or out or f"Failed to copy file to {dest_p}"
+
+    run_command([chmod_bin, "0644", str(dest_p)], privileged=True)
+    return True, "File copied successfully."
+
+
 def restart_sddm_service() -> Tuple[bool, str]:
     """
     Restart the sddm.service using systemctl.
