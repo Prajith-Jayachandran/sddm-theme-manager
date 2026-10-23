@@ -175,7 +175,10 @@ class ThemeLinter:
                     # Create .bak backup if not already present
                     bak_file = qml.with_suffix(".qml.bak")
                     if not bak_file.exists():
-                        bak_file.write_text(original, encoding="utf-8")
+                        if is_system:
+                            write_file_privileged(bak_file, original)
+                        else:
+                            bak_file.write_text(original, encoding="utf-8")
 
                     if is_system:
                         ok, msg = write_file_privileged(qml, modified)

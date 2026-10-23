@@ -119,12 +119,13 @@ WantedBy=timers.target
         return True, "Scheduler timer disabled."
 
     @classmethod
-    def apply_scheduled(cls) -> Tuple[bool, str]:
+    def apply_scheduled(cls, force: bool = False, custom_cfg: Optional[dict] = None) -> Tuple[bool, str]:
         """
         Determines whether day or night theme is active right now and applies it.
+        If force=True, applies the current time slot even if scheduler is not enabled.
         """
-        cfg = cls.read_config()
-        if not cfg.get("enabled", False):
+        cfg = custom_cfg or cls.read_config()
+        if not force and not cfg.get("enabled", False):
             return False, "Day/Night scheduler is not enabled."
 
         now = datetime.datetime.now().time()
@@ -153,4 +154,4 @@ WantedBy=timers.target
         if not target:
             return False, f"Target theme '{target_theme}' not found on system."
 
-        return ThemeApplier.apply_theme(target.path)
+        return ThemeApplier.apply_theme(target)

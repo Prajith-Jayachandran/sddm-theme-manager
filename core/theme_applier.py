@@ -86,6 +86,9 @@ class ThemeApplier:
         if hasattr(theme_obj_or_id, "id") and hasattr(theme_obj_or_id, "path"):
             theme_id = str(theme_obj_or_id.id).strip()
             theme_path = Path(theme_obj_or_id.path).resolve()
+        elif isinstance(theme_obj_or_id, Path):
+            theme_id = theme_obj_or_id.name.strip()
+            theme_path = theme_obj_or_id.resolve()
         elif isinstance(theme_obj_or_id, str):
             theme_id = theme_obj_or_id.strip()
             # Try to resolve path from ~/.local/share/sddm/themes/<theme_id>

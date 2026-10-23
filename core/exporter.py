@@ -55,6 +55,27 @@ class ThemeExporter:
             manifest_file = stage_dir / cls.BUNDLE_MANIFEST_NAME
             manifest_file.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
+            # Bundle external background image if referenced
+            import re
+            for conf_name in ["theme.conf", "theme.conf.user"]:
+                c_path = stage_dir / conf_name
+                if c_path.exists():
+                    try:
+                        c_text = c_path.read_text(encoding="utf-8", errors="ignore")
+                        match = re.search(r"^\s*background\s*=\s*(.+)$", c_text, re.MULTILINE)
+                        if match:
+                            bg_val = match.group(1).strip().strip('"\'')
+                            bg_p = Path(bg_val)
+                            if bg_p.is_absolute() and bg_p.exists() and not str(bg_p).startswith(str(stage_dir)):
+                                bg_dir = stage_dir / "backgrounds"
+                                bg_dir.mkdir(parents=True, exist_ok=True)
+                                bundled_bg = bg_dir / bg_p.name
+                                shutil.copy2(bg_p, bundled_bg)
+                                new_c_text = c_text.replace(bg_val, f"backgrounds/{bg_p.name}")
+                                c_path.write_text(new_c_text, encoding="utf-8")
+                    except Exception:
+                        pass
+
             # Check if zstd is requested and available
             if dest.name.endswith(".zst") and shutil.which("tar") and shutil.which("zstd"):
                 try:

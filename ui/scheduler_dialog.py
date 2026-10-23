@@ -131,11 +131,11 @@ class SchedulerDialog(QDialog):
     def _test_now(self):
         # Save temporary config and test
         self._save_to_dict()
-        ok, msg = DayNightScheduler.apply_scheduled()
+        ok, msg = DayNightScheduler.apply_scheduled(force=True, custom_cfg=self.config)
         if ok:
-            QMessageBox.information(self, "Test Successful", f"Applied scheduled theme: {msg}")
+            QMessageBox.information(self, "Test Successful", f"Applied scheduled theme:\n{msg}")
         else:
-            QMessageBox.warning(self, "Test Notice", f"Scheduled theme check: {msg}")
+            QMessageBox.warning(self, "Test Notice", f"Scheduled theme check:\n{msg}")
 
     def _save_to_dict(self):
         self.config["enabled"] = self.chk_enable.isChecked()

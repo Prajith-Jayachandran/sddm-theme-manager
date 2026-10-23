@@ -159,6 +159,12 @@ class ThemeTweakerDialog(QDialog):
 
         # Bottom Buttons
         btn_layout = QHBoxLayout()
+
+        btn_reset = QPushButton("Reset Defaults")
+        btn_reset.setToolTip("Restore original theme settings and remove visual tweaks")
+        btn_reset.clicked.connect(self._on_reset)
+        btn_layout.addWidget(btn_reset)
+
         btn_layout.addStretch()
 
         btn_cancel = QPushButton("Cancel")
@@ -172,6 +178,22 @@ class ThemeTweakerDialog(QDialog):
         btn_layout.addWidget(btn_save)
 
         main_layout.addLayout(btn_layout)
+
+    def _on_reset(self):
+        reply = QMessageBox.question(
+            self,
+            "Reset Tweaks",
+            f"Reset all visual tweaks for '{self.theme.name}' to default?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            ok, msg = ThemeConfigurator.reset_tweaks(self.theme.path)
+            if ok:
+                QMessageBox.information(self, "Tweaks Reset", msg)
+                self.accept()
+            else:
+                QMessageBox.critical(self, "Error", msg)
 
     def _update_color_button(self):
         col = self.selected_color or "#7aa2f7"

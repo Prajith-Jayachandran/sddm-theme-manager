@@ -43,69 +43,115 @@ class BackgroundManager:
         except Exception:
             pass
 
-        theme_user_conf = theme_dir / "theme.conf.user"
-        new_content = cls._update_background_in_conf(theme_user_conf, str(img_p))
+        theme_p = Path(theme_dir).resolve()
+        is_system = str(theme_p).startswith("/usr")
 
-        is_system = str(theme_dir.resolve()).startswith("/usr")
+        # Determine path to write into theme configuration
+        # If theme is in /usr and source image is in user's home (mode 0700),
+        # SDDM daemon (user sddm, uid 952) cannot read it. Copy into theme dir.
+        written_bg_path = str(img_p)
+        if is_system and not str(img_p).startswith("/usr/share/"):
+            dest_bg = theme_p / f"custom_background{img_p.suffix.lower()}"
+            from .polkit import copy_file_privileged, run_command
+            cp_ok, cp_msg = copy_file_privileged(img_p, dest_bg)
+            if cp_ok:
+                run_command(["/usr/bin/chmod", "0644", str(dest_bg)], privileged=True)
+                written_bg_path = str(dest_bg)
+
+        # 1. Update theme.conf.user (legacy / user override)
+        theme_user_conf = theme_p / "theme.conf.user"
+        user_content = cls._update_background_in_conf(theme_user_conf, written_bg_path)
+
+        # 2. Update theme.conf directly (the actual config file SDDM greeters load)
+        theme_conf = theme_p / "theme.conf"
+        theme_orig = theme_p / "theme.conf.orig"
+
+        # Backup original theme.conf on first modification
+        if theme_conf.exists() and not theme_orig.exists():
+            orig_text = theme_conf.read_text(encoding="utf-8", errors="ignore")
+            if is_system:
+                write_file_privileged(theme_orig, orig_text)
+            else:
+                theme_orig.write_text(orig_text, encoding="utf-8")
+
+        conf_content = cls._update_background_in_conf(theme_conf, written_bg_path)
+
         if is_system:
-            return write_file_privileged(theme_user_conf, new_content)
+            write_file_privileged(theme_user_conf, user_content)
+            ok, msg = write_file_privileged(theme_conf, conf_content)
+            return ok, msg
         else:
             try:
-                theme_user_conf.write_text(new_content, encoding="utf-8")
+                theme_user_conf.write_text(user_content, encoding="utf-8")
+                theme_conf.write_text(conf_content, encoding="utf-8")
                 return True, "Background set successfully."
             except Exception as e:
-                return False, f"Failed to write theme.conf.user: {e}"
+                return False, f"Failed to write theme configuration: {e}"
 
     @classmethod
     def reset_background(cls, theme_dir: Path) -> Tuple[bool, str]:
         """
-        Resets custom background to theme default by removing background key from
-        theme.conf.user or deleting theme.conf.user if no other keys remain.
+        Resets custom background to theme default by restoring theme.conf.orig,
+        cleaning up copied custom background files, and removing theme.conf.user.
         """
-        theme_user_conf = theme_dir / "theme.conf.user"
-        if not theme_user_conf.exists():
+        theme_p = Path(theme_dir).resolve()
+        is_system = str(theme_p).startswith("/usr")
+        theme_conf = theme_p / "theme.conf"
+        theme_orig = theme_p / "theme.conf.orig"
+        theme_user_conf = theme_p / "theme.conf.user"
+
+        # Restore original theme.conf if present
+        if theme_orig.exists():
+            orig_text = theme_orig.read_text(encoding="utf-8", errors="ignore")
+            if is_system:
+                write_file_privileged(theme_conf, orig_text)
+                remove_path_privileged(theme_orig)
+            else:
+                theme_conf.write_text(orig_text, encoding="utf-8")
+                theme_orig.unlink(missing_ok=True)
+
+        # Clean up any custom_background.* in theme folder
+        for custom_bg in theme_p.glob("custom_background.*"):
+            if is_system:
+                remove_path_privileged(custom_bg)
+            else:
+                custom_bg.unlink(missing_ok=True)
+
+        if not theme_user_conf.exists() and not theme_orig.exists():
             return True, "Theme is already using default background."
 
-        parser = configparser.ConfigParser(strict=False, interpolation=None)
-        parser.optionxform = str
-        try:
-            parser.read(theme_user_conf, encoding="utf-8")
-        except Exception:
-            parser = configparser.ConfigParser()
+        if theme_user_conf.exists():
+            parser = configparser.ConfigParser(strict=False, interpolation=None)
+            parser.optionxform = str
+            try:
+                parser.read(theme_user_conf, encoding="utf-8")
+            except Exception:
+                parser = configparser.ConfigParser()
 
-        # Remove background option from [General]
-        if parser.has_section("General") and parser.has_option("General", "background"):
-            parser.remove_option("General", "background")
-            # If [General] section is empty now, remove it
-            if not parser.options("General"):
-                parser.remove_section("General")
+            # Remove background option from [General]
+            if parser.has_section("General") and parser.has_option("General", "background"):
+                parser.remove_option("General", "background")
+                if not parser.options("General"):
+                    parser.remove_section("General")
 
-        is_system = str(theme_dir.resolve()).startswith("/usr")
-
-        # If parser has no remaining sections or options, delete the file
-        has_remaining = any(len(parser.options(sec)) > 0 for sec in parser.sections())
-        if not has_remaining:
-            if is_system:
-                return remove_path_privileged(theme_user_conf)
-            else:
-                try:
+            # If parser has no remaining sections or options, delete the file
+            has_remaining = any(len(parser.options(sec)) > 0 for sec in parser.sections())
+            if not has_remaining:
+                if is_system:
+                    remove_path_privileged(theme_user_conf)
+                else:
                     theme_user_conf.unlink(missing_ok=True)
-                    return True, "Custom background removed. Theme reset to default."
-                except Exception as e:
-                    return False, f"Failed to delete theme.conf.user: {e}"
-        else:
-            # Write back remaining settings
-            buf = io.StringIO()
-            parser.write(buf)
-            new_content = buf.getvalue().strip() + "\n"
-            if is_system:
-                return write_file_privileged(theme_user_conf, new_content)
             else:
-                try:
+                # Write back remaining settings
+                buf = io.StringIO()
+                parser.write(buf)
+                new_content = buf.getvalue().strip() + "\n"
+                if is_system:
+                    write_file_privileged(theme_user_conf, new_content)
+                else:
                     theme_user_conf.write_text(new_content, encoding="utf-8")
-                    return True, "Background reset; preserved other custom settings."
-                except Exception as e:
-                    return False, f"Failed to update theme.conf.user: {e}"
+
+        return True, "Theme background reset to default."
 
     @classmethod
     def get_current_background(cls, theme_dir: Path) -> Optional[str]:

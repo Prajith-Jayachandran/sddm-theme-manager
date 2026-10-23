@@ -101,10 +101,12 @@ class DisplayManager:
 
         return monitors
 
+    WAYLAND_DISPLAY_CONF = Path("/etc/sddm.conf.d/10-display.conf")
+
     @classmethod
     def set_primary_monitor(cls, output_name: str, mode: Optional[str] = None) -> Tuple[bool, str]:
         """
-        Writes xrandr configuration into /usr/share/sddm/scripts/Xsetup.
+        Configures primary monitor across both X11 (via Xsetup) and Wayland (via 10-display.conf).
         """
         line_cmd = f"xrandr --output {output_name} --primary"
         if mode:
@@ -130,16 +132,35 @@ class DisplayManager:
 
         new_content = "\n".join(lines).strip() + "\n"
 
-        ok, msg = write_file_privileged(cls.XSETUP_PATH, new_content)
-        if ok:
-            # Ensure Xsetup is executable
-            run_command(["chmod", "0755", str(cls.XSETUP_PATH)], privileged=True)
-            return True, f"Primary monitor set to '{output_name}' in SDDM Xsetup."
-        return False, msg
+        # 1. Update X11 Xsetup
+        ok_x, msg_x = write_file_privileged(cls.XSETUP_PATH, new_content)
+        if ok_x:
+            run_command(["/usr/bin/chmod", "0755", str(cls.XSETUP_PATH)], privileged=True)
+
+        # 2. Update Wayland drop-in config
+        wayland_content = (
+            "# Primary display for SDDM Wayland greeter (configured by SDDM Theme Manager)\n"
+            "[Wayland]\n"
+            f"PrimaryDisplay={output_name}\n"
+        )
+        ok_w, msg_w = write_file_privileged(cls.WAYLAND_DISPLAY_CONF, wayland_content)
+
+        if ok_x or ok_w:
+            return True, f"Primary monitor set to '{output_name}' for SDDM."
+        return False, msg_x or msg_w
 
     @classmethod
     def get_configured_primary(cls) -> Optional[str]:
-        """Checks if a primary monitor was configured in Xsetup."""
+        """Checks if a primary monitor was configured in Xsetup or 10-display.conf."""
+        if cls.WAYLAND_DISPLAY_CONF.exists():
+            try:
+                content = cls.WAYLAND_DISPLAY_CONF.read_text(encoding="utf-8", errors="ignore")
+                for line in content.splitlines():
+                    if line.strip().lower().startswith("primarydisplay="):
+                        return line.split("=", 1)[1].strip()
+            except Exception:
+                pass
+
         if not cls.XSETUP_PATH.exists():
             return None
         content = cls.XSETUP_PATH.read_text(encoding="utf-8", errors="ignore")

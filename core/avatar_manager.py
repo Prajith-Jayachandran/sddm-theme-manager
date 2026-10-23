@@ -1,19 +1,21 @@
 """
 SDDM Theme Manager - User Avatar / Profile Picture Manager
-Configures user profile avatars for SDDM greeters across both legacy (~/.face.icon)
+Configures user profile avatars for SDDM greeters across both SDDM faces
+(/usr/share/sddm/faces/<user>.face.icon), legacy (~/.face.icon),
 and modern AccountsService (/var/lib/AccountsService/icons/<user>) locations.
 """
 
 import getpass
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage
 
-from .polkit import write_file_privileged
+from .polkit import copy_file_privileged, run_command, write_file_privileged
 
 
 class AvatarManager:
@@ -51,16 +53,21 @@ class AvatarManager:
     @classmethod
     def get_user_avatar(cls, username: Optional[str] = None) -> Optional[Path]:
         """
-        Locates existing avatar for a user from AccountsService or ~/.face.icon.
+        Locates existing avatar for a user checking SDDM faces, AccountsService, or ~/.face.icon.
         """
         user = username or cls.get_current_username()
 
-        # Check AccountsService
+        # 1. Check SDDM native faces folder (/usr/share/sddm/faces/<user>.face.icon)
+        sddm_face = Path(f"/usr/share/sddm/faces/{user}.face.icon")
+        if sddm_face.exists() and sddm_face.stat().st_size > 0:
+            return sddm_face
+
+        # 2. Check AccountsService
         acc_icon = Path(f"/var/lib/AccountsService/icons/{user}")
         if acc_icon.exists() and acc_icon.stat().st_size > 0:
             return acc_icon
 
-        # Check user's home ~/.face.icon or ~/.face
+        # 3. Check user's home ~/.face.icon or ~/.face
         home = Path.home() if user == cls.get_current_username() else Path(f"/home/{user}")
         for fname in [".face.icon", ".face"]:
             candidate = home / fname
@@ -77,7 +84,8 @@ class AvatarManager:
         crop_square: bool = True,
     ) -> Tuple[bool, str]:
         """
-        Scales/crops the image and sets it as user avatar in ~/.face.icon and AccountsService.
+        Scales/crops the image and sets it as user avatar in /usr/share/sddm/faces/,
+        ~/.face.icon, and AccountsService.
         """
         user = username or cls.get_current_username()
         src_p = Path(image_path).resolve()
@@ -105,43 +113,56 @@ class AvatarManager:
         try:
             avatar_img.save(str(user_face), "PNG")
             os.chmod(user_face, 0o644)
-        except Exception as e:
-            return False, f"Failed to save ~/.face.icon: {e}"
+        except Exception:
+            pass
 
-        # 2. Save privileged copy to /var/lib/AccountsService/icons/<user>
-        import tempfile
+        # 2. Prepare temp file for privileged copies
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp_path = Path(tmp.name)
             avatar_img.save(str(tmp_path), "PNG")
 
         try:
-            from .polkit import copy_file_privileged, run_command
-            acc_icon_dest = Path(f"/var/lib/AccountsService/icons/{user}")
-            # Ensure /var/lib/AccountsService/icons directory exists
-            run_command(["mkdir", "-p", "/var/lib/AccountsService/icons"], privileged=True)
+            # 3. Copy to SDDM faces directory (/usr/share/sddm/faces/<user>.face.icon)
+            sddm_face_dir = Path("/usr/share/sddm/faces")
+            run_command(["/usr/bin/mkdir", "-p", str(sddm_face_dir)], privileged=True)
+            sddm_face_dest = sddm_face_dir / f"{user}.face.icon"
+            sddm_ok, _ = copy_file_privileged(tmp_path, sddm_face_dest)
+            if sddm_ok:
+                run_command(["/usr/bin/chmod", "0644", str(sddm_face_dest)], privileged=True)
 
-            cp_ok, cp_msg = copy_file_privileged(tmp_path, acc_icon_dest)
+            # 4. Copy to AccountsService icons
+            acc_dir = Path("/var/lib/AccountsService/icons")
+            run_command(["/usr/bin/mkdir", "-p", str(acc_dir)], privileged=True)
+            acc_icon_dest = acc_dir / user
+            acc_ok, _ = copy_file_privileged(tmp_path, acc_icon_dest)
+            if acc_ok:
+                run_command(["/usr/bin/chmod", "0644", str(acc_icon_dest)], privileged=True)
 
-            # Update /var/lib/AccountsService/users/<user>
-            acc_user_file = Path(f"/var/lib/AccountsService/users/{user}")
+            # 5. Update /var/lib/AccountsService/users/<user>
+            acc_users_dir = Path("/var/lib/AccountsService/users")
+            run_command(["/usr/bin/mkdir", "-p", str(acc_users_dir)], privileged=True)
+            acc_user_file = acc_users_dir / user
             user_conf_content = (
                 "[User]\n"
                 f"Icon={acc_icon_dest}\n"
             )
             if acc_user_file.exists():
-                old_content = acc_user_file.read_text(encoding="utf-8", errors="ignore")
-                if "[User]" in old_content:
-                    lines = []
-                    icon_written = False
-                    for l in old_content.splitlines():
-                        if l.strip().lower().startswith("icon="):
+                try:
+                    old_content = acc_user_file.read_text(encoding="utf-8", errors="ignore")
+                    if "[User]" in old_content:
+                        lines = []
+                        icon_written = False
+                        for l in old_content.splitlines():
+                            if l.strip().lower().startswith("icon="):
+                                lines.append(f"Icon={acc_icon_dest}")
+                                icon_written = True
+                            else:
+                                lines.append(l)
+                        if not icon_written:
                             lines.append(f"Icon={acc_icon_dest}")
-                            icon_written = True
-                        else:
-                            lines.append(l)
-                    if not icon_written:
-                        lines.append(f"Icon={acc_icon_dest}")
-                    user_conf_content = "\n".join(lines).strip() + "\n"
+                        user_conf_content = "\n".join(lines).strip() + "\n"
+                except Exception:
+                    pass
 
             write_file_privileged(acc_user_file, user_conf_content)
         finally:

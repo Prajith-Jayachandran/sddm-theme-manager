@@ -128,10 +128,16 @@ class DaemonConfigManager:
             if not ok:
                 return False, f"Failed to save autologin settings: {msg}"
         else:
-            # If disabled, remove or clear autologin config
-            from .polkit import remove_path_privileged
-            if cls.AUTOLOGIN_CONF.exists():
-                remove_path_privileged(cls.AUTOLOGIN_CONF)
+            # If disabled, explicitly clear autologin in drop-in config to override any fallbacks
+            auto_lines = [
+                "# Autologin disabled by SDDM Theme Manager",
+                "[Autologin]",
+                "User=",
+                "Session=",
+                "Relogin=false",
+            ]
+            auto_content = "\n".join(auto_lines) + "\n"
+            write_file_privileged(cls.AUTOLOGIN_CONF, auto_content)
 
         # 2. General and Users config
         gen_lines = [
