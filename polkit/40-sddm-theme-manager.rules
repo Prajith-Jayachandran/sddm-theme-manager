@@ -1,0 +1,58 @@
+/* Allow members of the wheel group to restart SDDM and write
+ * SDDM config/theme files without additional authentication.
+ * Install as: /etc/polkit-1/rules.d/40-sddm-theme-manager.rules
+ * Permissions: root:root 644
+ */
+
+// 1. Restart sddm.service via systemd D-Bus action
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") == "sddm.service" &&
+        action.lookup("verb") == "restart" &&
+        subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+
+// 2. Allow pkexec writes to SDDM paths and SDDM service restart
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        subject.isInGroup("wheel")) {
+        var program = action.lookup("program");
+        var cmdLine = action.lookup("command_line") || "";
+        var argv = action.lookup("argv");
+
+        // Allow systemctl restart sddm via pkexec
+        if (program == "/usr/bin/systemctl" || program == "/bin/systemctl") {
+            if (cmdLine.indexOf("restart sddm") >= 0 || cmdLine.indexOf("restart sddm.service") >= 0) {
+                return polkit.Result.YES;
+            }
+        }
+
+        // Only allow writes to SDDM-related paths
+        if (program == "/usr/bin/tee" || program == "/bin/tee" ||
+            program == "/usr/bin/cp" || program == "/bin/cp" ||
+            program == "/usr/bin/mkdir" || program == "/bin/mkdir" ||
+            program == "/usr/bin/chmod" || program == "/bin/chmod" ||
+            program == "/usr/bin/rm" || program == "/bin/rm") {
+
+            // Check command_line string (used by pkexec in polkitd)
+            if (cmdLine.indexOf("/etc/sddm.conf") >= 0 ||
+                cmdLine.indexOf("/usr/share/sddm/themes/") >= 0 ||
+                cmdLine.indexOf("/usr/local/share/sddm/themes/") >= 0) {
+                return polkit.Result.YES;
+            }
+
+            // Safe fallback if argv is ever defined as an array
+            if (argv && typeof argv.length === "number") {
+                for (var i = 0; i < argv.length; i++) {
+                    if (argv[i].indexOf("/etc/sddm.conf") == 0 ||
+                        argv[i].indexOf("/usr/share/sddm/themes/") == 0 ||
+                        argv[i].indexOf("/usr/local/share/sddm/themes/") == 0) {
+                        return polkit.Result.YES;
+                    }
+                }
+            }
+        }
+    }
+});

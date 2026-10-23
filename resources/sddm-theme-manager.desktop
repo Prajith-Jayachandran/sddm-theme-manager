@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SDDM Theme Manager
+GenericName=Display Manager Theme Settings
+Comment=Standalone, DE-agnostic SDDM login screen theme manager and customizer
+Exec=sddm-theme-manager
+Icon=sddm-theme-manager
+Terminal=false
+Categories=Settings;DesktopSettings;Qt;System;
+Keywords=sddm;theme;login;display manager;greeter;wallpaper;plasma;gnome;hyprland;
+StartupNotify=true
+StartupWMClass=SDDM Theme Manager
