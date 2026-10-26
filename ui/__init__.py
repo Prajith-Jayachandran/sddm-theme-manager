@@ -5,6 +5,7 @@ SDDM Theme Manager UI Package
 from .archive_installer import ArchiveInstaller
 from .detail_panel import DetailPanel
 from .install_dialog import InstallDialog
+from .live_console import LiveConsoleDrawer
 from .main_window import MainWindow
 from .preview_overlay import PreviewExitOverlay
 from .store_dialog import StoreDialog
@@ -31,6 +32,7 @@ __all__ = [
     "StoreDialog",
     "PreviewExitOverlay",
     "InstallDialog",
+    "LiveConsoleDrawer",
     "ThemeEditor",
     "CodeEditor",
     "LineNumberArea",

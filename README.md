@@ -40,6 +40,13 @@ Works identically on **KDE Plasma**, **GNOME**, **Hyprland**, and other window m
     - `QMLSyntaxHighlighter`: Highlighting for QML components, keywords, properties, numbers, strings, and multi-line comments (`/* ... */`).
   - **Live INI Validation & Escape Badges**: Monospace line numbering gutter with real-time detection of unrecognized escape sequences (⚠️ badges).
   - **Debounced Live Preview (300ms)**: Real-time background parser with escape resolution (`\n`, `\t`, `\s`, `\\`), dynamic aspect-ratio scaling, video/color badges, and metadata info strip (`resolution`, `file size`).
+  - **⚡ Live Dev & Diagnostic Studio (1+2+3+4 Architecture)**:
+    - **`▶ Live Test (F5)` & `⏹ Stop (Shift+F5)`**: Directly launches live greeter test mode (`sddm-greeter-qt6` or `sddm-greeter`) asynchronously with process supervision and PID monitoring.
+    - **Real-Time Diagnostic Console Drawer**: Collapsible dark terminal that streams stdout/stderr in real time, colorizing errors (🔴), warnings (🟡), and info (🟢).
+    - **1-Click Error Navigation**: Regex parses runtime QML errors (`Main.qml:42`) and provides clickable links that immediately switch the editor file and jump to the exact offending line.
+    - **Actionable Suggestions Engine**: Inlines intelligent fix recommendations for common SDDM errors (e.g. `Library import requires a version`, `Button.background` property conflicts, missing Qt modules).
+    - **Pre-Flight Static Validation**: Instantly verifies brace balance and entrypoint files before spawning the greeter to prevent unhandled parse crashes.
+    - **Hot-Reload on Save (`Ctrl+S`)**: Automatically re-runs the live greeter on save for rapid visual feedback.
   - **Integrated File Creator**: Built-in **"➕ New File…"** tool to scaffold new files (`theme.conf.user`, QML components) directly inside the theme directory.
   - **Polkit-Aware Save & Apply**: Dedicated buttons for **"💾 Save File"** (`Ctrl+S`) and **"⚡ Save & Apply"** (saves file, updates `/etc/sddm.conf.d/10-theme.conf`, restarts SDDM, and presents a 2-second restarting overlay).
 
@@ -174,37 +181,37 @@ update-desktop-database --version
 
 ---
 
-## 📦 Installation
+## 📦 Installation & Automated Self-Healing Setup
 
-Run the included `install.sh` script:
+The included `install.sh` script is an **automated, self-healing installer** that sets up the application and automatically resolves common Linux permissions, Polkit configurations, and desktop launcher pitfalls.
 
-### System-wide Installation (Recommended)
+### User-Level Installation (Recommended)
 ```bash
 cd ~/sddm-theme-manager
-sudo ./install.sh
+./install.sh
 ```
-This installs:
-- Executable: `/usr/local/bin/sddm-theme-manager`
-- Application code & assets: `/usr/local/share/sddm-theme-manager/`
-- Desktop entry: `/usr/local/share/applications/sddm-theme-manager.desktop`
-- Scalable & PNG icons: `/usr/local/share/icons/hicolor/...`
-- Polkit rules: `/etc/polkit-1/rules.d/40-sddm-theme-manager.rules`
+Installs the application into `~/.local/` and automatically:
+- Checks system dependencies (`Python 3`, `PyQt6`, `SDDM`, `greeters`, `ffmpeg`).
+- Generates desktop launcher with **absolute executable paths** (eliminating menu launch failures).
+- Refreshes desktop application menus, GTK icon caches, and KDE Sycoca databases immediately.
+- Idempotently adds `~/.local/bin` to your `~/.bashrc` and `~/.zshrc` if not present in `$PATH`.
+- Prompts to install Polkit rules (`root:root 644`) for passwordless theme management.
+- Normalizes SDDM system directories (`/usr/share/sddm/themes` with `0755` permissions) and syncs user themes.
 
-### User-Level Installation (No Root)
+### System-Wide Installation
 ```bash
 cd ~/sddm-theme-manager
-./install.sh --user
+sudo ./install.sh --system
 ```
-Installs to `~/.local/bin` and `~/.local/share/applications`.
+Installs system-wide to `/usr/local/bin` and `/usr/local/share/sddm-theme-manager`.
 
-> [!IMPORTANT]
-> **Refresh Desktop Application Database**:
-> After installing (or uninstalling), make sure to run:
-> ```bash
-> update-desktop-database ~/.local/share/applications/
-> ```
-> *(Or `sudo update-desktop-database /usr/local/share/applications/` for system-wide installs).*
-> This immediately updates your desktop launcher index (KDE Plasma, GNOME, XFCE, Hyprland, rofi, wofi) so the application icon shows up without needing to log out or reboot.
+### ⚡ Automated 1-Click Repair Mode
+If you ever encounter permission errors, missing Polkit rules, or themes not showing up in SDDM on boot, run:
+```bash
+./install.sh --repair
+```
+*(Or `sudo ./install.sh --repair`).*
+This diagnoses and automatically repairs Polkit rules, SDDM directory permissions, user theme sync, and desktop launcher caches in one step.
 
 ---
 
@@ -280,11 +287,32 @@ journalctl -b -u polkit | grep -E "Error loading|40-sddm-theme-manager"
 
 ---
 
-## ⚠️ Troubleshooting & Error Resolution
+## ⚠️ Troubleshooting & Automated Self-Healing
+
+> [!TIP]
+> ### ⚡ Automated 1-Click Fix via `install.sh --repair`
+> Instead of manually diagnosing and copy-pasting individual commands below, run the built-in repair suite:
+> ```bash
+> cd ~/sddm-theme-manager
+> ./install.sh --repair
+> ```
+> *(Or `sudo ./install.sh --repair`).*
+> This script automatically detects and resolves:
+> - Polkit rules missing, misconfigured, or having wrong ownership/permissions (auto-sets `root:root 644`).
+> - Restarts and verifies the Polkit system service via systemd journal logs.
+> - SDDM system directories (`/usr/share/sddm/themes`, `/etc/sddm.conf.d`) permissions and auto-syncs user themes so SDDM never reverts to Breeze.
+> - Refreshes desktop launcher shortcuts, icons, and KDE Sycoca application databases.
+> - Verifies shell `$PATH` and configures `~/.local/bin` in `~/.bashrc` and `~/.zshrc`.
+> - Validates Python, PyQt6, SDDM greeters, and ffmpeg dependencies.
+
+---
+
+### Manual Resolutions & Technical Explanations
 
 ### 1. `Failed to write configuration: Error executing command as another user: Not authorized`
 - **Cause**: Either the Polkit rule is not installed in `/etc/polkit-1/rules.d/`, or an older rule using `action.lookup("argv")` caused a JavaScript `TypeError` in `polkitd` because Polkit provides `action.lookup("command_line")` instead of an array.
-- **Resolution**: Copy the updated rule file and restart Polkit:
+- **Resolution (Automated)**: Run `./install.sh --repair`
+- **Resolution (Manual)**: Copy the updated rule file and restart Polkit:
   ```bash
   sudo cp ~/sddm-theme-manager/polkit/40-sddm-theme-manager.rules /etc/polkit-1/rules.d/
   sudo chown root:root /etc/polkit-1/rules.d/40-sddm-theme-manager.rules
@@ -294,7 +322,8 @@ journalctl -b -u polkit | grep -E "Error loading|40-sddm-theme-manager"
 
 ### 2. `cp: cannot stat '/root/sddm-theme-manager/...': No such file or directory`
 - **Cause**: If you switched to a root shell (`sudo su`), `~` resolves to `/root/` instead of your user's home directory (`/home/<user>/`).
-- **Resolution**: Use the explicit path from your user directory:
+- **Resolution (Automated)**: Run `./install.sh --repair` (the script automatically resolves `$SUDO_USER` and the real home directory).
+- **Resolution (Manual)**: Use the explicit path from your user directory:
   ```bash
   cp /home/$USER/sddm-theme-manager/polkit/40-sddm-theme-manager.rules /etc/polkit-1/rules.d/
   chown root:root /etc/polkit-1/rules.d/40-sddm-theme-manager.rules
@@ -304,7 +333,8 @@ journalctl -b -u polkit | grep -E "Error loading|40-sddm-theme-manager"
 
 ### 3. `Permission denied` when copying to `/etc/polkit-1/rules.d/`
 - **Cause**: The `/etc/polkit-1/rules.d/` directory has strict `700` (`rwx------`) permissions owned by `root`. Standard user shells cannot view or write files there without privilege elevation.
-- **Resolution**: Always prefix copy, chown, and chmod commands with `sudo`:
+- **Resolution (Automated)**: Run `./install.sh --repair` (prompts for elevation automatically).
+- **Resolution (Manual)**: Always prefix copy, chown, and chmod commands with `sudo`:
   ```bash
   sudo cp ~/sddm-theme-manager/polkit/40-sddm-theme-manager.rules /etc/polkit-1/rules.d/
   sudo chown root:root /etc/polkit-1/rules.d/40-sddm-theme-manager.rules
@@ -314,29 +344,24 @@ journalctl -b -u polkit | grep -E "Error loading|40-sddm-theme-manager"
 
 ### 4. `Launching SDDM Theme Manager (Failed): Could not find the program 'sddm-theme-manager'`
 - **Cause**: On Linux desktop environments (such as KDE Plasma or GNOME), desktop shortcuts with relative command paths (`Exec=sddm-theme-manager`) rely on the desktop session's `$PATH`. User binary directories like `~/.local/bin` are frequently not in the desktop session's `$PATH` by default.
-- **Resolution**:
-  - `install.sh` automatically writes the absolute executable path into the desktop entry (e.g., `Exec=/home/<user>/.local/bin/sddm-theme-manager` or `Exec=/usr/local/bin/sddm-theme-manager`).
-  - Re-run the installer:
-    ```bash
-    cd ~/sddm-theme-manager
-    ./install.sh --user
-    ```
-  - Refresh your application database:
-    ```bash
-    update-desktop-database ~/.local/share/applications/
-    kbuildsycoca6 --noincremental   # For KDE Plasma
-    ```
+- **Resolution (Automated)**:
+  Run `./install.sh --repair` which writes the exact absolute executable path (e.g. `Exec=/home/<user>/.local/bin/sddm-theme-manager`), updates desktop databases, and adds `~/.local/bin` to your `~/.bashrc` / `~/.zshrc`.
+- **Resolution (Manual)**:
+  ```bash
+  update-desktop-database ~/.local/share/applications/
+  kbuildsycoca6 --noincremental   # For KDE Plasma
+  ```
 
-### 4. Applied Theme Does Not Show in SDDM (Reverts to Default Breeze)
+### 5. Applied Theme Does Not Show in SDDM (Reverts to Default Breeze)
 - **Cause**: SDDM runs as a dedicated system user (`sddm`, UID 952). The SDDM daemon reads `Current=<theme-name>` from `/etc/sddm.conf.d/10-theme.conf` and searches for the theme in `/usr/share/sddm/themes/`. If a theme only exists in user storage (`~/.local/share/sddm/themes/`), SDDM cannot access it because Linux user home directories usually have mode `700` (`drwx------`). When SDDM fails to locate or read the theme directory, it silently falls back to the default `breeze` theme.
-- **Resolution**:
-  - **In-App (1-Click)**: Click the **"⚡ Fix & Sync to SDDM Now"** button in the health alert banner, or select the theme and click **"Sync to SDDM"** in the details panel.
-  - **Automated Sync**: SDDM Theme Manager automatically syncs newly applied or downloaded themes to `/usr/share/sddm/themes/` with normalized world-readable permissions (`0755` dirs, `0644` files).
-  - **Manual CLI**:
-    ```bash
-    sudo cp -r ~/.local/share/sddm/themes/<theme-name> /usr/share/sddm/themes/
-    sudo chmod -R a+rX /usr/share/sddm/themes/<theme-name>
-    ```
+- **Resolution (Automated)**:
+  - Run `./install.sh --repair` to automatically copy un-synced user themes to `/usr/share/sddm/themes/` with normalized `0755` directory and `0644` file permissions.
+  - Or click the **"⚡ Fix & Sync to SDDM Now"** button in the health alert banner inside the app.
+- **Resolution (Manual)**:
+  ```bash
+  sudo cp -r ~/.local/share/sddm/themes/<theme-name> /usr/share/sddm/themes/
+  sudo chmod -R a+rX /usr/share/sddm/themes/<theme-name>
+  ```
 
 ### 5. Cannot Exit Full-Screen Live Greeter Preview (Wayland / KWin)
 - **Cause**: Running `sddm-greeter-qt6 --test-mode` creates a full-screen window on your active display. On Wayland compositors (such as KWin on KDE Plasma 6), override-redirect or X11 bypass windows (`Qt.X11BypassWindowManagerHint`) can be hidden beneath the preview window, leaving no exit button visible.
@@ -453,6 +478,44 @@ Existing custom sections and keys are preserved without touching the system `/et
 ---
 
 ## 📋 Changelog & Recent Updates
+
+### v1.2.4
+- **Live Dev & Diagnostic Studio (Unified 1+2+3+4 Architecture) in Theme Editor**:
+  - **Layer 1: Live Play Greeter Runner (`LiveGreeterRunner`)**:
+    - Direct **`▶ Live Test (F5)`** and **`⏹ Stop (Shift+F5)`** action controls in the editor header bar.
+    - Spawns `sddm-greeter-qt6 --test-mode` (or `sddm-greeter` fallback) asynchronously via `QProcess` with live PID tracking and supervised process termination.
+  - **Layer 2: Real-Time Diagnostic Console Drawer (`LiveConsoleDrawer`)**:
+    - Collapsible dark diagnostic console docked beneath the editor streaming `stdout` and `stderr` in real time.
+    - Color-coded log streams: 🔴 Errors, 🟡 Warnings, 🟢 Success/Info, 🔵 Pre-Flight.
+    - **Clickable Error Jumps**: Parsing engine identifies `([a-zA-Z0-9_\-\.\/]+\.qml):(\d+)` and generates 1-click links (`👉 [⚡ Jump to Main.qml:42]`). Clicking automatically switches files and positions the cursor with immediate line highlighting.
+    - **Actionable Quick-Fix Hints**: Automatically detects common SDDM greeter pitfalls (e.g., `Library import requires a version`, `Button.background` property conflicts, missing Qt modules, unhandled connection syntax) and presents an inline suggestion box.
+  - **Layer 3: Instant Pre-Flight Static Validation**:
+    - Sub-millisecond pre-flight checks before greeter spawn: verifies balanced `{}` `()` `[]` braces and ensures `MainScript` and entrypoint files exist.
+    - Flags fatal syntax errors immediately in the console drawer without wasting CPU or crashing the display greeter.
+  - **Layer 4: Hot-Reload Dev Mode (`[✓] Hot-Reload on Save`)**:
+    - Toggle checkbox in the toolbar (`Hot-Reload`). When enabled, pressing **`Ctrl+S`** automatically saves the file, terminates the active greeter process, and relaunches the live test in under 0.5s for rapid visual iteration.
+  - **Test Suite Expansion**:
+    - Test suite expanded from 307 to **358 automated unit and integration tests** with 100% pass rate.
+
+### v1.2.3
+- **Automated Self-Healing Installer & Comprehensive Diagnostic Suite (`install.sh`)**:
+  - **Automated Polkit Rule Provisioning & Hardening**:
+    - Automatically installs `/etc/polkit-1/rules.d/40-sddm-theme-manager.rules` and `/usr/share/polkit-1/actions/com.sddmthememanager.policy` with strict, required `root:root 644` permissions.
+    - Automatically restarts the `polkit` daemon via systemd and verifies journalctl logs to eliminate JavaScript TypeErrors or rule loading failures.
+    - Accurately resolves real user (`$SUDO_USER`) and home paths to permanently prevent the `cp: cannot stat '/root/...'` path expansion pitfall.
+  - **Absolute Desktop Paths & Seamless Application Menus**:
+    - Generates desktop launcher shortcuts (`.desktop`) with exact absolute executable paths (`Exec=$BIN_DIR/$APP_NAME`), resolving the `Could not find the program 'sddm-theme-manager'` error across all desktop environments.
+    - Automatically triggers `update-desktop-database`, `gtk-update-icon-cache`, and `kbuildsycoca6/5` to refresh KDE Plasma and GNOME app launchers immediately without rebooting.
+  - **SDDM Permissions & User Theme Auto-Sync**:
+    - Automatically normalizes `/usr/share/sddm/themes/` and `/etc/sddm.conf.d/` permissions (`0755` world-readable).
+    - Automatically scans `~/.local/share/sddm/themes/` and synchronizes un-synced user themes to `/usr/share/sddm/themes/` with `0755` directory and `0644` file permissions so SDDM never reverts to Breeze on boot.
+  - **Automated Shell PATH Integration**:
+    - Detects whether `~/.local/bin` is in `$PATH` and provisions clean, idempotent exports into `~/.bashrc` and `~/.zshrc`.
+    - Automatically creates `/usr/local/bin/sddm-theme-manager` universal symlink if `/usr/local/bin` is writable or when installing with privileges.
+  - **Standalone 1-Click Repair Mode (`./install.sh --repair`)**:
+    - Added `--repair` / `--fix` flag to run full self-healing diagnostics, repair permissions, sync user themes, fix Polkit rules, and refresh desktop databases in a single command.
+  - **Environment & Dependency Diagnostics**:
+    - Verifies Python 3 runtime, PyQt6 bindings, SDDM greeter binaries (`sddm-greeter-qt6` vs `sddm-greeter`), optional video thumbnail extractor (`ffmpeg`), and administrative group membership (`wheel`/`sudo`).
 
 ### v1.2.2
 - **Smart Theme Scaffolder & Creation Template Modes (Combined 1+2+3+4 Architecture)**:

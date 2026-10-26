@@ -27,6 +27,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -47,8 +48,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.live_runner import LiveGreeterRunner
 from core.polkit import write_file_privileged
 from core.theme_applier import ThemeApplier
+from ui.live_console import LiveConsoleDrawer
 from ui.theme_tutorial_dialog import ThemeTutorialDialog
 from ui.theme_writer import ThemeWriter
 
@@ -350,6 +353,18 @@ class CodeEditor(QPlainTextEdit):
             extra_selections.append(selection)
         self.setExtraSelections(extra_selections)
 
+    def jump_to_line(self, line_number: int):
+        """Moves cursor to line_number (1-indexed), centers viewport, and highlights the line."""
+        if line_number < 1:
+            line_number = 1
+        block = self.document().findBlockByNumber(line_number - 1)
+        if block.isValid():
+            cursor = QTextCursor(block)
+            self.setTextCursor(cursor)
+            self.centerCursor()
+            self.setFocus()
+            self.highlight_current_line()
+
     def scan_escape_sequences(self):
         """Scans for unrecognized escape sequences and marks line numbers for warning icons."""
         self.invalid_escape_lines.clear()
@@ -530,7 +545,38 @@ class ThemeEditor(QDialog):
             "  background-color: #7aa2f7;"
             "  color: #1a1b26;"
             "}"
+            "QToolButton#btnLivePlay {"
+            "  background-color: #143a29;"
+            "  color: #73daca;"
+            "  border: 1px solid #73daca;"
+            "  font-weight: bold;"
+            "}"
+            "QToolButton#btnLivePlay:hover {"
+            "  background-color: #73daca;"
+            "  color: #0c0e17;"
+            "}"
+            "QToolButton#btnStopLive {"
+            "  background-color: #3c1626;"
+            "  color: #f7768e;"
+            "  border: 1px solid #f7768e;"
+            "  font-weight: bold;"
+            "}"
+            "QToolButton#btnStopLive:hover {"
+            "  background-color: #f7768e;"
+            "  color: #0c0e17;"
+            "}"
+            "QToolButton#btnStopLive:disabled {"
+            "  background-color: #24283b;"
+            "  color: #565f89;"
+            "  border: 1px solid #3b4261;"
+            "}"
         )
+
+        self.live_runner = LiveGreeterRunner(self)
+        self.live_runner.started.connect(self._on_live_started)
+        self.live_runner.output_received.connect(self._on_live_output)
+        self.live_runner.finished.connect(self._on_live_finished)
+        self.live_runner.preflight_failed.connect(self._on_preflight_failed)
 
         self.preview_timer = QTimer(self)
         self.preview_timer.setSingleShot(True)
@@ -676,6 +722,30 @@ class ThemeEditor(QDialog):
         self.btn_tutorial.clicked.connect(lambda: self.open_tutorial_dialog(0))
         file_header_layout.addWidget(self.btn_tutorial)
 
+        # Live Play Controls (Layers 1 & 4)
+        self.btn_live_play = QToolButton(left_widget)
+        self.btn_live_play.setObjectName("btnLivePlay")
+        self.btn_live_play.setText("▶ Live Test")
+        self.btn_live_play.setToolTip("Run live SDDM greeter in test mode with real-time error diagnostics (F5)")
+        self.btn_live_play.setCursor(Qt.PointingHandCursor)
+        self.btn_live_play.clicked.connect(self.run_live_test)
+        file_header_layout.addWidget(self.btn_live_play)
+
+        self.btn_stop_live = QToolButton(left_widget)
+        self.btn_stop_live.setObjectName("btnStopLive")
+        self.btn_stop_live.setText("⏹ Stop")
+        self.btn_stop_live.setToolTip("Stop active live greeter process (Shift+F5)")
+        self.btn_stop_live.setCursor(Qt.PointingHandCursor)
+        self.btn_stop_live.setEnabled(False)
+        self.btn_stop_live.clicked.connect(self.stop_live_test)
+        file_header_layout.addWidget(self.btn_stop_live)
+
+        self.chk_hot_reload = QCheckBox("Hot-Reload", left_widget)
+        self.chk_hot_reload.setToolTip("Automatically restart live test when saving file (Ctrl+S)")
+        self.chk_hot_reload.setChecked(True)
+        self.chk_hot_reload.setStyleSheet("QCheckBox { color: #7aa2f7; font-size: 11px; font-weight: bold; }")
+        file_header_layout.addWidget(self.chk_hot_reload)
+
         left_layout.addLayout(file_header_layout)
 
         # Code Editor
@@ -729,7 +799,19 @@ class ThemeEditor(QDialog):
         splitter.addWidget(right_widget)
 
         splitter.setSizes([520, 400])
-        main_layout.addWidget(splitter, 1)
+
+        # Main Vertical Splitter: Editor/Preview above, Live Diagnostics Console below
+        v_splitter = QSplitter(Qt.Vertical, self)
+        v_splitter.setStyleSheet("QSplitter::handle { background-color: #24283b; height: 4px; }")
+        v_splitter.addWidget(splitter)
+
+        # Live Diagnostics Console Drawer
+        self.live_console = LiveConsoleDrawer(self)
+        self.live_console.jump_requested.connect(self._on_console_jump_requested)
+        v_splitter.addWidget(self.live_console)
+
+        v_splitter.setSizes([520, 160])
+        main_layout.addWidget(v_splitter, 1)
 
         # Bottom Toolbar
         bottom_bar = QHBoxLayout()
@@ -768,6 +850,12 @@ class ThemeEditor(QDialog):
 
         sc_f1 = QShortcut(QKeySequence("F1"), self)
         sc_f1.activated.connect(lambda: self.open_tutorial_dialog(0))
+
+        sc_f5 = QShortcut(QKeySequence("F5"), self)
+        sc_f5.activated.connect(self.run_live_test)
+
+        sc_shift_f5 = QShortcut(QKeySequence("Shift+F5"), self)
+        sc_shift_f5.activated.connect(self.stop_live_test)
 
         sc_esc = QShortcut(QKeySequence("Escape"), self)
         sc_esc.activated.connect(self.close_with_check)
@@ -1218,7 +1306,83 @@ class ThemeEditor(QDialog):
         # Brief notification in title
         self.setWindowTitle(f"Edit: {self.theme_path.name} — {self.active_file_path.name} (Saved)")
         QTimer.singleShot(1500, lambda: self.setWindowTitle(f"Edit: {self.theme_path.name} — {self.active_file_path.name}"))
+
+        # Layer 4: Hot-Reload on Save
+        if hasattr(self, "chk_hot_reload") and self.chk_hot_reload.isChecked():
+            if hasattr(self, "live_runner") and self.live_runner.is_running():
+                self.run_live_test()
+
         return True
+
+    # -------------------------------------------------------------------------
+    # Live Dev & Diagnostic Studio Controls (Layers 1, 2, 3, 4)
+    # -------------------------------------------------------------------------
+    def run_live_test(self):
+        """Pre-flight check and live test execution."""
+        if hasattr(self, "live_console") and self.live_console.is_collapsed():
+            self.live_console.set_collapsed(False)
+
+        if hasattr(self, "live_console"):
+            self.live_console.set_status("PRE-FLIGHT...", "preflight")
+
+        if self.is_dirty:
+            self.save_current_file()
+
+        current_text = self.editor.toPlainText()
+        self.live_runner.start(self.theme_path, self.active_file_path, current_text)
+
+    def stop_live_test(self):
+        """Stops active live greeter process."""
+        self.live_runner.stop()
+        if hasattr(self, "live_console"):
+            self.live_console.set_status("STOPPED", "idle")
+        if hasattr(self, "btn_live_play"):
+            self.btn_live_play.setEnabled(True)
+        if hasattr(self, "btn_stop_live"):
+            self.btn_stop_live.setEnabled(False)
+
+    def _on_live_started(self, pid: int):
+        if hasattr(self, "btn_live_play"):
+            self.btn_live_play.setEnabled(False)
+        if hasattr(self, "btn_stop_live"):
+            self.btn_stop_live.setEnabled(True)
+        if hasattr(self, "live_console"):
+            self.live_console.set_status(f"RUNNING (PID {pid})", "running")
+
+    def _on_live_finished(self, exit_code: int, status_str: str):
+        if hasattr(self, "btn_live_play"):
+            self.btn_live_play.setEnabled(True)
+        if hasattr(self, "btn_stop_live"):
+            self.btn_stop_live.setEnabled(False)
+        if hasattr(self, "live_console"):
+            if exit_code in (0, 124):
+                self.live_console.set_status(f"STOPPED ({status_str})", "idle")
+            else:
+                self.live_console.set_status(f"FAILED (Exit {exit_code})", "error")
+
+    def _on_live_output(self, raw_text: str, level: str, diag: dict):
+        if hasattr(self, "live_console"):
+            self.live_console.log(raw_text, level, diag)
+
+    def _on_preflight_failed(self, msg: str, line: int):
+        if hasattr(self, "btn_live_play"):
+            self.btn_live_play.setEnabled(True)
+        if hasattr(self, "btn_stop_live"):
+            self.btn_stop_live.setEnabled(False)
+        if hasattr(self, "live_console"):
+            self.live_console.set_status("PRE-FLIGHT FAILED", "error")
+        self.editor.jump_to_line(line)
+
+    def _on_console_jump_requested(self, filename: str, line_no: int):
+        """Switches active file if necessary and jumps cursor to line."""
+        clean_name = Path(filename).name.lower()
+        if self.active_file_path.name.lower() != clean_name:
+            for i in range(self.combo_files.count()):
+                path_str = self.combo_files.itemData(i)
+                if path_str and Path(path_str).name.lower() == clean_name:
+                    self.combo_files.setCurrentIndex(i)
+                    break
+        self.editor.jump_to_line(line_no)
 
     def save_and_apply(self):
         """Saves current file, applies theme to SDDM configuration, restarts SDDM with overlay, and closes."""
@@ -1261,6 +1425,8 @@ class ThemeEditor(QDialog):
         QTimer.singleShot(2000, self.accept)
 
     def close_with_check(self):
+        if hasattr(self, "live_runner") and self.live_runner.is_running():
+            self.live_runner.stop()
         if self.is_dirty:
             reply = QMessageBox.question(
                 self,
@@ -1274,6 +1440,8 @@ class ThemeEditor(QDialog):
         self.reject()
 
     def closeEvent(self, event):
+        if hasattr(self, "live_runner") and self.live_runner.is_running():
+            self.live_runner.stop()
         if self.is_dirty:
             reply = QMessageBox.question(
                 self,

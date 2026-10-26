@@ -2,8 +2,10 @@
 SDDM Theme Manager - Core Package
 """
 
+from core.live_runner import LiveGreeterRunner, QMLErrorParser
 from ui.archive_installer import ArchiveInstaller, validate_theme_conf
 from ui.install_dialog import InstallDialog
+from ui.live_console import LiveConsoleDrawer
 from ui.theme_editor import (
     CodeEditor,
     INISyntaxHighlighter,
@@ -20,6 +22,9 @@ from ui.theme_writer import ThemeWriter
 
 __all__ = [
     "InstallDialog",
+    "LiveConsoleDrawer",
+    "LiveGreeterRunner",
+    "QMLErrorParser",
     "ThemeEditor",
     "CodeEditor",
     "LineNumberArea",

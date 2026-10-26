@@ -4,6 +4,7 @@ SDDM Theme Manager Core Package
 
 from .background import BackgroundManager
 from .installer import ThemeInstaller
+from .live_runner import LiveGreeterRunner, QMLErrorParser
 from .polkit import (
     PolkitConfig,
     detect_sddm_qt_version,
@@ -23,6 +24,8 @@ __all__ = [
     "ThemeApplier",
     "BackgroundManager",
     "ThemeInstaller",
+    "LiveGreeterRunner",
+    "QMLErrorParser",
     "PreviewManager",
     "StoreClient",
     "StoreItem",
