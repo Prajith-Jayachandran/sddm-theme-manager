@@ -34,6 +34,7 @@ from .sticky_notes import StickyNotesManager
 from .store_client import StoreClient, StoreItem
 from .system_hud import SystemHUDTelemetry
 from .theme_applier import ThemeApplier
+from .theme_enhancer import ThemeEnhancer
 from .theme_scanner import Theme, ThemeScanner
 from .weather_service import WeatherService
 
@@ -41,6 +42,7 @@ __all__ = [
     "Theme",
     "ThemeScanner",
     "ThemeApplier",
+    "ThemeEnhancer",
     "BackgroundManager",
     "ThemeInstaller",
     "BootShield",

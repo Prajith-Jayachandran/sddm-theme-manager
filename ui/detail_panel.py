@@ -45,6 +45,7 @@ class DetailPanel(QFrame):
     lint_clicked = Signal(object)  # Theme
     export_clicked = Signal(object)  # Theme
     edit_clicked = Signal(object)  # Theme
+    equip_clicked = Signal(object)  # Theme
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -146,6 +147,14 @@ class DetailPanel(QFrame):
         main_btns_layout.addWidget(self.btn_apply)
 
         actions_box.addLayout(main_btns_layout)
+
+        # Equip Next-Gen Features Button
+        self.btn_equip = QPushButton("⚡ Equip Next-Gen Features…")
+        self.btn_equip.setCursor(Qt.PointingHandCursor)
+        self.btn_equip.setStyleSheet("background-color: #3b2d54; color: #bb9af7; border: 1px solid #7aa2f7; border-radius: 4px; padding: 6px; font-weight: bold;")
+        self.btn_equip.setToolTip("Equip theme with startup audio chime, GLSL shaders, weather, HUD, and MPRIS")
+        self.btn_equip.clicked.connect(self._on_equip_clicked)
+        actions_box.addWidget(self.btn_equip)
 
         # Sync Theme to System Button
         self.btn_sync = QPushButton("Sync to SDDM (/usr/share)")
@@ -256,6 +265,7 @@ class DetailPanel(QFrame):
             self.btn_apply.setEnabled(False)
             self.btn_preview.setEnabled(False)
             self.btn_sync.setEnabled(False)
+            self.btn_equip.setEnabled(False)
             self.btn_set_bg.setEnabled(False)
             self.btn_reset_bg.setEnabled(False)
             self.btn_remove.setEnabled(False)
@@ -309,6 +319,7 @@ class DetailPanel(QFrame):
         self.btn_tweak.setEnabled(True)
         self.btn_lint.setEnabled(True)
         self.btn_export.setEnabled(True)
+        self.btn_equip.setEnabled(True)
         self.btn_open_folder.setEnabled(True)
         self.btn_remove.setEnabled(True)
 
@@ -454,3 +465,7 @@ class DetailPanel(QFrame):
     def _on_edit_theme_clicked(self):
         if self.current_theme:
             self.edit_clicked.emit(self.current_theme)
+
+    def _on_equip_clicked(self):
+        if self.current_theme:
+            self.equip_clicked.emit(self.current_theme)

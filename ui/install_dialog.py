@@ -285,6 +285,10 @@ class InstallDialog(QDialog):
         self.btn_group_mode.addButton(self.radio_boilerplate, 2)
         mode_radio_layout.addWidget(self.radio_boilerplate)
 
+        self.radio_nextgen = QRadioButton("🌟 Next-Gen Master Suite", self.create_form_frame)
+        self.btn_group_mode.addButton(self.radio_nextgen, 3)
+        mode_radio_layout.addWidget(self.radio_nextgen)
+
         form_vlayout.addLayout(mode_radio_layout)
 
         # Dynamic Mode Details Area
@@ -346,6 +350,21 @@ class InstallDialog(QDialog):
         boiler_layout.addWidget(lbl_boiler_hint)
         self.mode_context_stack.addWidget(page_boiler)
 
+        # Page 3: Next-Gen Master Suite Mode
+        page_nextgen = QWidget()
+        nextgen_layout = QVBoxLayout(page_nextgen)
+        nextgen_layout.setContentsMargins(6, 6, 6, 6)
+        lbl_nextgen_hint = QLabel(
+            "🌟 <b>Next-Gen Master Suite:</b> Complete futuristic greeter template equipped with "
+            "Startup Boot Chime, GLSL Shaders, Real-Time Weather & Lunar phases, MPRIS Dynamic Island, "
+            "Cold Boot Hardware HUD, Sticky Notes, Mobile Passkey QR, FIDO2 visualizer, and Mini-Games.",
+            page_nextgen,
+        )
+        lbl_nextgen_hint.setWordWrap(True)
+        lbl_nextgen_hint.setStyleSheet("color: #7aa2f7; font-size: 12px; background: transparent;")
+        nextgen_layout.addWidget(lbl_nextgen_hint)
+        self.mode_context_stack.addWidget(page_nextgen)
+
         form_vlayout.addWidget(self.mode_context_stack)
         self.btn_group_mode.idToggled.connect(self._on_mode_radio_toggled)
 
@@ -393,6 +412,8 @@ class InstallDialog(QDialog):
         elif button_id == 1:  # Custom
             self.chk_generate_preview.setChecked(True)
         elif button_id == 2:  # Boilerplate
+            self.chk_generate_preview.setChecked(True)
+        elif button_id == 3:  # Next-Gen Master
             self.chk_generate_preview.setChecked(True)
 
     def _browse_custom_wallpaper(self):
@@ -470,6 +491,8 @@ class InstallDialog(QDialog):
             custom_img = self.txt_custom_wallpaper.text().strip() or None
         elif mode_id == 2:
             mode_str = "boilerplate"
+        elif mode_id == 3:
+            mode_str = "nextgen"
 
         generate_preview = self.chk_generate_preview.isChecked()
 

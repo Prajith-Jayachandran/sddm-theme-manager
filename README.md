@@ -479,6 +479,29 @@ Existing custom sections and keys are preserved without touching the system `/et
 
 ## 📋 Changelog & Recent Updates
 
+### v1.4.0 — Universal Theme Enhancer & Next-Gen Master Suite Template
+- **⚡ Universal Theme Enhancer Engine (`core/theme_enhancer.py`)**:
+  - **Universal 1-Click Upgrade for Existing Themes**: Easily equips *any* existing installed SDDM theme (`star-rail`, `nier-automata`, `Slot-Silvery-SDDM-6`, `pixel-hollowknight`, etc.) with the complete Next-Gen sensory, visual, and telemetry suite.
+  - **Full Suite Integration**: Automatically generates and wires 8 modern companion QML widgets (`ShaderBackground.qml`, `WeatherCanvas.qml`, `MediaCapsule.qml`, `SystemHUD.qml`, `StickyNotesWidget.qml`, `PasskeyWidget.qml`, `Fido2Visualizer.qml`, `GameFlappytux.qml`) and enables non-blocking SDDM boot chime audio playback in `/usr/share/sddm/scripts/Xsetup`.
+  - **Non-Destructive Fail-Safe Architecture**: Automated backup (`Main.qml.pre_enhance_bak`) created before injecting anchors, ensuring zero risk of theme corruption or data loss.
+  - **1-Click Clean Rollback**: Instant clean restoration from backup, safely restoring original files and purging injected companion QMLs.
+  - **Interactive Dialog (`ui/theme_enhancer_dialog.py`)**:
+    - Real-time feature inspection badges detecting active and inactive features.
+    - Sound preset selector (*Macintosh Platinum*, *PS2 Ambient*, *Win98 Wave*, *Cyber Beep*, *Mechanical Click*) with live **"▶ Test"** audio preview.
+    - Procedural GLSL shader selector (*Matrix Digital Rain*, *Retro Synthwave Grid*, *Neon Waves*, *Fluid Nebula*, *Deep Space Starfield*).
+    - 1-Click batch upgrade button and 1-Click rollback button.
+  - **Universal UI Entry Points**:
+    - **Main Toolbar**: Prominent **"⚡ Equip…"** button.
+    - **Detail Panel**: Dedicated **"⚡ Equip Next-Gen Features…"** action button.
+    - **Grid Context Menu**: Right-click any theme card → **"⚡ Equip Next-Gen Features…"**.
+- **🌟 Next-Gen Master Suite Template (`mode="nextgen"`)**:
+  - New 5th creation mode in **"Install from File" → "📁 Create Your Own"** wizard (`InstallDialog`) and `ThemeWriter.scaffold_theme(mode="nextgen")`.
+  - Automatically scaffolds 14 files and assets: comprehensive Qt 5 & Qt 6 dual-compatible `Main.qml`, 8 companion widgets, `metadata.desktop`, `theme.conf`, 1080p `background.png`, and `preview.png`.
+  - Includes responsive glass cards, user switching, avatar mask, session selector, dynamic island MPRIS controls, weather/lunar particle canvas, cold boot HUD hardware telemetry, mobile passkey QR, and mini-game easter egg (`Ctrl+Alt+G`).
+  - Interactive **Theme Tutorial Dialog** updated with an exact 60-word technical specification for Next-Gen Master Mode.
+- **Automated Test Suite Expansion**:
+  - Test suite expanded from 481 to **556 automated unit and integration tests across 44 sections** with a **100% pass rate (0 failures)**.
+
 ### v1.3.0 — The 20 Groundbreaking Features Next-Gen Suite
 - **🛡️ Phase 0: Foundation & Safety Shield**:
   - **Feature 11: "Boot Shield" Never-Get-Locked-Out Watchdog (`core/boot_shield.py`)**:
@@ -743,11 +766,13 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── linter.py                    # Qt5/Qt6 compatibility scanner, entry validator & auto-patcher
 │   ├── exporter.py                  # Portable theme bundle packager (.tar.gz/.tar.zst)
 │   ├── display_manager.py           # Multi-monitor display detector & Xsetup configurator
-│   └── daemon_config.py             # SDDM daemon settings, autologin, & session manager
+│   ├── daemon_config.py             # SDDM daemon settings, autologin, & session manager
+│   └── theme_enhancer.py            # Universal Next-Gen feature injector & rollback engine
 ├── ui/
 │   ├── main_window.py               # Main window, toolbar, status bar & live watcher
 │   ├── install_dialog.py            # Dual-card chooser dialog (scaffold vs archive)
 │   ├── theme_editor.py              # Multi-file code editor & debounced live preview dialog
+│   ├── theme_enhancer_dialog.py     # Interactive Next-Gen feature equip & rollback modal
 │   ├── theme_writer.py              # Polkit file writer, Qt 6 greeter template & wallpaper generator
 │   ├── archive_installer.py         # Archive extraction, flattening, validation & backup
 │   ├── theme_grid.py                # Scrollable card grid with filter & sort

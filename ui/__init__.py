@@ -11,6 +11,7 @@ from .main_window import MainWindow
 from .preview_overlay import PreviewExitOverlay
 from .store_dialog import StoreDialog
 from .studio_builder import StudioBuilderDialog, StudioCanvas
+from .theme_enhancer_dialog import ThemeEnhancerDialog
 from .theme_editor import (
     CodeEditor,
     INISyntaxHighlighter,
@@ -48,4 +49,5 @@ __all__ = [
     "StudioBuilderDialog",
     "StudioCanvas",
     "BootShieldDialog",
+    "ThemeEnhancerDialog",
 ]

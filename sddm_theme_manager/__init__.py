@@ -19,6 +19,8 @@ from ui.theme_tutorial_dialog import (
     ThemeTutorialDialog,
 )
 from ui.theme_writer import ThemeWriter
+from core.theme_enhancer import ThemeEnhancer
+from ui.theme_enhancer_dialog import ThemeEnhancerDialog
 
 __all__ = [
     "InstallDialog",
@@ -36,4 +38,6 @@ __all__ = [
     "ThemeTutorialDialog",
     "THEME_FILES_TUTORIAL_DATA",
     "TEMPLATE_MODES_TUTORIAL_DATA",
+    "ThemeEnhancer",
+    "ThemeEnhancerDialog",
 ]

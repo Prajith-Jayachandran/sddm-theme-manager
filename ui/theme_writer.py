@@ -13,7 +13,16 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Tuple
 
+from core.audio_chime import AudioChimeManager
+from core.fido2_detector import FIDO2Detector
+from core.greeter_games import GreeterGamesManager
+from core.mpris_bridge import MPRISBridge
+from core.passkey_server import PasskeyAuthServer
 from core.polkit import copy_file_privileged, restart_sddm_service, write_file_privileged
+from core.shader_engine import ShaderEngine
+from core.sticky_notes import StickyNotesManager
+from core.system_hud import SystemHUDTelemetry
+from core.weather_service import WeatherService
 
 logger = logging.getLogger("sddm_theme_manager.theme_writer")
 
@@ -445,6 +454,254 @@ Rectangle {
 """
 
 
+NEXTGEN_MASTER_MAIN_QML = """import QtQuick 2.15
+import QtQuick.Window 2.15
+import SddmComponents 2.0
+
+Rectangle {
+    id: root
+    width: Screen.width > 0 ? Screen.width : 1920
+    height: Screen.height > 0 ? Screen.height : 1080
+    color: "#0b0f19"
+
+    readonly property real s: Math.max(0.75, Math.min(1.5, height / 1080))
+    property int sessionIndex: (sessionModel && sessionModel.lastIndex >= 0) ? sessionModel.lastIndex : 0
+    property int userIndex: (userModel && userModel.lastIndex >= 0) ? userModel.lastIndex : 0
+
+    readonly property color colAccent: "#7aa2f7"
+    readonly property color colCard: Qt.rgba(0.08, 0.11, 0.18, 0.85)
+    readonly property color colBorder: Qt.rgba(0.25, 0.35, 0.55, 0.45)
+
+    // Helper models
+    ListView {
+        id: sessionHelper
+        model: sessionModel
+        currentIndex: root.sessionIndex
+        visible: false
+        width: 0; height: 0
+        delegate: Item { property string sName: model.name || "" }
+    }
+
+    ListView {
+        id: userHelper
+        model: userModel
+        currentIndex: root.userIndex
+        visible: false
+        width: 0; height: 0
+        delegate: Item {
+            property string uName: model.realName || model.name || ""
+            property string uLogin: model.name || ""
+        }
+    }
+
+    // 1. Procedural GLSL Shader Background
+    ShaderBackground {
+        id: nextgenShaderBg
+        anchors.fill: parent
+        z: -1
+        opacity: 0.85
+    }
+
+    // 2. Real-Time Weather & Astronomical Cosmos Canvas
+    WeatherCanvas {
+        id: nextgenWeather
+        anchors.fill: parent
+        z: 5
+        opacity: 0.9
+    }
+
+    // 3. Pre-Login MPRIS Media Capsule (Dynamic Island)
+    MediaCapsule {
+        id: nextgenMedia
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 20
+        z: 12
+    }
+
+    // 4. Pre-Login Household Sticky Notes
+    StickyNotesWidget {
+        id: nextgenNotes
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 20
+        z: 14
+    }
+
+    // 5. Pre-Login Cold Boot Hardware HUD
+    SystemHUD {
+        id: nextgenHud
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 14
+        z: 15
+    }
+
+    // 6. Security & Authentication: FIDO2 & Mobile Passkey
+    Fido2Visualizer {
+        id: nextgenFido
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 80
+        z: 16
+    }
+
+    PasskeyWidget {
+        id: nextgenPasskey
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 24
+        z: 17
+        scale: 0.85
+    }
+
+    // 7. Interactive Pre-Login Mini-Game Easter Egg
+    GameFlappytux {
+        id: nextgenGame
+        visible: false
+        z: 99
+        anchors.centerIn: parent
+    }
+
+    // Center Login Card
+    Rectangle {
+        id: loginCard
+        width: 360 * s
+        height: 290 * s
+        radius: 16 * s
+        color: root.colCard
+        border.color: root.colBorder
+        border.width: 1.5
+        anchors.centerIn: parent
+        z: 20
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 14 * s
+            width: parent.width - 48 * s
+
+            // User Avatar Circle
+            Rectangle {
+                width: 68 * s
+                height: 68 * s
+                radius: 34 * s
+                color: "#1e293b"
+                border.color: root.colAccent
+                border.width: 2
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "👤"
+                    font.pixelSize: 32 * s
+                }
+            }
+
+            // Username
+            Text {
+                text: (userHelper.currentItem && userHelper.currentItem.uName) ? userHelper.currentItem.uName : "User"
+                color: "#ffffff"
+                font.bold: true
+                font.pixelSize: 16 * s
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            // Password Input Box
+            Rectangle {
+                width: parent.width
+                height: 42 * s
+                radius: 8 * s
+                color: "#0b101b"
+                border.color: passInput.activeFocus ? root.colAccent : "#334155"
+                border.width: 1.5
+
+                TextInput {
+                    id: passInput
+                    anchors.fill: parent
+                    anchors.margins: 10 * s
+                    echoMode: TextInput.Password
+                    passwordCharacter: "•"
+                    color: "#ffffff"
+                    font.pixelSize: 14 * s
+                    verticalAlignment: TextInput.AlignVCenter
+                    focus: true
+
+                    Keys.onReturnPressed: doLogin()
+                    Keys.onEnterPressed: doLogin()
+
+                    Text {
+                        anchors.fill: parent
+                        text: "Enter Password…"
+                        color: "#64748b"
+                        font.pixelSize: 13 * s
+                        verticalAlignment: Text.AlignVCenter
+                        visible: !passInput.text && !passInput.activeFocus
+                    }
+                }
+            }
+
+            // Action Row: Login & Mini-game toggle
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 12 * s
+
+                Rectangle {
+                    width: 160 * s
+                    height: 38 * s
+                    radius: 6 * s
+                    color: loginMouse.pressed ? "#1d4ed8" : (loginMouse.containsMouse ? "#2563eb" : "#3b82f6")
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Log In"
+                        color: "#ffffff"
+                        font.bold: true
+                        font.pixelSize: 13 * s
+                    }
+
+                    MouseArea {
+                        id: loginMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: doLogin()
+                    }
+                }
+
+                Rectangle {
+                    width: 40 * s
+                    height: 38 * s
+                    radius: 6 * s
+                    color: "#1e293b"
+                    border.color: "#334155"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "🎮"
+                        font.pixelSize: 16 * s
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: nextgenGame.visible = !nextgenGame.visible
+                    }
+                }
+            }
+        }
+    }
+
+    function doLogin() {
+        var u = (userHelper.currentItem && userHelper.currentItem.uLogin) ? userHelper.currentItem.uLogin : "user";
+        if (typeof sddm !== "undefined") {
+            sddm.login(u, passInput.text, root.sessionIndex);
+        }
+    }
+}
+"""
+
+
 def generate_starter_wallpaper(theme_name: str, width: int = 1920, height: int = 1080):
     """
     Generates an aesthetic modern dark gradient wallpaper image using PySide6 QtGui.
@@ -598,6 +855,7 @@ class ThemeWriter:
         Scaffolds a new SDDM theme in /usr/share/sddm/themes/<name>/ (or base_dir).
 
         Modes:
+        - "nextgen": Comprehensive Next-Gen Master template equipped with startup audio, shaders, weather, MPRIS, and HUD.
         - "minimal": Zero dummy images created. Pure QML + INI fallback gradient. (Asset-Free)
         - "custom": Copies user's chosen wallpaper and generates matching preview thumbnail.
         - "boilerplate": Provisions sample 1080p background.png and preview.png assets.
@@ -635,16 +893,24 @@ class ThemeWriter:
             "showClock=true\n"
             "blurRadius=0\n"
         )
+        if mode == "nextgen":
+            starter_conf += "enableAudioChime=true\nchimePreset=mac_retro\nshaderPreset=matrix_rain\n"
+
+        desc_text = (
+            "Next-Gen Master Suite SDDM Theme with Audio, Shaders, Weather, HUD, and Telemetry"
+            if mode == "nextgen"
+            else "Custom SDDM Theme"
+        )
 
         metadata_json = json.dumps(
-            {"name": theme_name, "author": "Custom", "version": "1.0", "description": "Custom SDDM Theme"},
+            {"name": theme_name, "author": "Custom", "version": "1.0", "description": desc_text},
             indent=2,
         )
 
         metadata_desktop = (
             "[SddmGreeterTheme]\n"
             f"Name={theme_name}\n"
-            "Description=Custom SDDM Theme\n"
+            f"Description={desc_text}\n"
             "Author=Custom\n"
             "Type=sddm-theme\n"
             "Version=1.0\n"
@@ -669,15 +935,36 @@ class ThemeWriter:
             return False, None, f"Failed to scaffold metadata.json: {msg}"
 
         # 4. Write Main.qml
-        ok, msg = cls.write_file(theme_dir / "Main.qml", STARTER_MAIN_QML)
+        main_qml_code = NEXTGEN_MASTER_MAIN_QML if mode == "nextgen" else STARTER_MAIN_QML
+        ok, msg = cls.write_file(theme_dir / "Main.qml", main_qml_code)
         if not ok:
             return False, None, f"Failed to scaffold Main.qml: {msg}"
+
+        # 4b. If nextgen mode, provision all companion components and sound hook
+        if mode == "nextgen":
+            components = {
+                "ShaderBackground.qml": ShaderEngine.generate_qml_component(ShaderEngine.PRESETS[0]),
+                "WeatherCanvas.qml": WeatherService.generate_weather_qml(WeatherService.fetch_weather(timeout=1)),
+                "MediaCapsule.qml": MPRISBridge.generate_capsule_qml(),
+                "SystemHUD.qml": SystemHUDTelemetry.generate_hud_qml(),
+                "StickyNotesWidget.qml": StickyNotesManager.generate_notes_qml(),
+                "PasskeyWidget.qml": PasskeyAuthServer.generate_passkey_qml(PasskeyAuthServer.create_session("User")),
+                "Fido2Visualizer.qml": FIDO2Detector.generate_visualizer_qml(),
+                "GameFlappytux.qml": GreeterGamesManager.GAMES[0].qml_source,
+            }
+            for comp_name, comp_code in components.items():
+                cls.write_file(theme_dir / comp_name, comp_code)
+
+            try:
+                AudioChimeManager.install_sddm_chime_hook("mac_retro")
+            except Exception as e:
+                logger.warning(f"Failed to auto-install startup chime hook: {e}")
 
         # 5. Asset handling based on selected mode
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
 
-            if mode == "boilerplate":
+            if mode in ("boilerplate", "nextgen"):
                 try:
                     bg_img = generate_starter_wallpaper(theme_name, 1920, 1080)
                     preview_img = bg_img.scaled(640, 360)

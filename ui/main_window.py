@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
         self.theme_grid.remove_requested.connect(self.remove_theme)
         self.theme_grid.open_folder_requested.connect(self.open_theme_folder)
         self.theme_grid.edit_requested.connect(self.open_theme_editor)
+        self.theme_grid.equip_requested.connect(self.open_enhancer_dialog)
 
         self.detail_panel = DetailPanel(self)
         self.detail_panel.preview_clicked.connect(self.toggle_preview)
@@ -136,6 +137,7 @@ class MainWindow(QMainWindow):
         self.detail_panel.lint_clicked.connect(self.open_linter_dialog)
         self.detail_panel.export_clicked.connect(self.export_theme_archive)
         self.detail_panel.edit_clicked.connect(self.open_theme_editor)
+        self.detail_panel.equip_clicked.connect(self.open_enhancer_dialog)
 
         self.splitter.addWidget(self.theme_grid)
         self.splitter.addWidget(self.detail_panel)
@@ -238,6 +240,13 @@ class MainWindow(QMainWindow):
         btn_edit_theme.setCursor(Qt.PointingHandCursor)
         btn_edit_theme.clicked.connect(self.open_selected_theme_editor)
         toolbar.addWidget(btn_edit_theme)
+
+        # Action: Equip Next-Gen Features
+        btn_equip_theme = QPushButton(" ⚡ Equip…")
+        btn_equip_theme.setToolTip("Equip selected theme with startup audio chime, GLSL shaders, weather, and telemetry")
+        btn_equip_theme.setCursor(Qt.PointingHandCursor)
+        btn_equip_theme.clicked.connect(self.open_selected_theme_enhancer)
+        toolbar.addWidget(btn_equip_theme)
 
         toolbar.addSeparator()
 
@@ -665,6 +674,13 @@ class MainWindow(QMainWindow):
         """Toolbar action to open theme editor for the currently selected theme."""
         self.open_theme_editor(self.current_selected_theme)
 
+    def open_selected_theme_enhancer(self):
+        """Toolbar action to equip Next-Gen features on the currently selected theme."""
+        if not self.current_selected_theme:
+            QMessageBox.information(self, "No Theme Selected", "Please select a theme to equip Next-Gen features.")
+            return
+        self.open_enhancer_dialog(self.current_selected_theme)
+
     def open_tweaker_dialog(self, theme: Theme):
         """Opens the visual theme customizer for the selected theme."""
         from ui.tweaker_dialog import ThemeTweakerDialog
@@ -678,6 +694,14 @@ class MainWindow(QMainWindow):
         dlg = LinterDialog(theme, self)
         if dlg.exec():
             self.refresh_themes(select_path=theme.path)
+
+    def open_enhancer_dialog(self, theme: Theme):
+        """Opens the Next-Gen feature enhancer modal for equipping modern features."""
+        from ui.theme_enhancer_dialog import ThemeEnhancerDialog
+        dlg = ThemeEnhancerDialog(theme, self)
+        dlg.features_updated.connect(lambda p: self.refresh_themes(select_path=p))
+        dlg.exec()
+        self.refresh_themes(select_path=theme.path)
 
     def export_theme_archive(self, theme: Theme):
         """Exports the selected theme as a portable .tar.gz bundle."""

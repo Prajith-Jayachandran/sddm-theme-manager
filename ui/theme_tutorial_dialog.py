@@ -326,6 +326,31 @@ TEMPLATE_MODES_TUTORIAL_DATA: List[Dict[str, str]] = [
             "# No bulky 1080p background.png dummy file created!"
         ),
     },
+    {
+        "id": "nextgen",
+        "filename": "Next-Gen Master Mode",
+        "title": "Next-Gen Master Mode — All Innovations",
+        "icon": "🌟",
+        "badge": "Full Sensory & Telemetry Master Suite",
+        "badge_color": "#7aa2f7",
+        "role": "Master Suite: Integrates Boot Chime, Shaders, Weather, MPRIS, and HUD.",
+        "description": (
+            "The Next-Gen Master Mode scaffolds a state-of-the-art SDDM greeter equipped with all 20 "
+            "modern innovations. It combines startup boot chimes, GLSL fragment shader backgrounds, "
+            "real-time weather with lunar phases, pre-login MPRIS media capsules, cold boot hardware "
+            "telemetry HUDs, household sticky notes, and mobile biometric QR passkeys. This mode provides "
+            "the ultimate showcase of Linux desktop ricing technology with zero dependencies."
+        ),
+        "syntax": "Master Package: Main.qml + Companion Widgets (Shader, Weather, MPRIS, HUD)",
+        "example": (
+            "# Next-Gen Directory Structure:\n"
+            "├── Main.qml              # Master greeter script\n"
+            "├── ShaderBackground.qml  # Procedural GLSL engine\n"
+            "├── WeatherCanvas.qml     # Dynamic particle canvas\n"
+            "├── MediaCapsule.qml      # Dynamic Island MPRIS\n"
+            "└── SystemHUD.qml         # Live hardware telemetry"
+        ),
+    },
 ]
 
 

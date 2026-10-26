@@ -235,6 +235,7 @@ class ThemeGridWidget(QWidget):
     remove_requested = Signal(object)  # Theme
     open_folder_requested = Signal(object)  # Theme
     edit_requested = Signal(object)  # Theme
+    equip_requested = Signal(object)  # Theme
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -407,6 +408,7 @@ class ThemeGridWidget(QWidget):
             act_sync = menu.addAction("Sync to SDDM System Directory")
 
         menu.addSeparator()
+        act_equip = menu.addAction("⚡ Equip Next-Gen Features…")
         act_edit = menu.addAction("✏️ Edit Theme (theme.conf & files)…")
         act_bg = menu.addAction("Set Background...")
         act_reset_bg = menu.addAction("Reset to Theme Default BG")
@@ -422,6 +424,8 @@ class ThemeGridWidget(QWidget):
             self.apply_requested.emit(theme)
         elif act_sync and action == act_sync:
             self.sync_requested.emit(theme)
+        elif action == act_equip:
+            self.equip_requested.emit(theme)
         elif action == act_edit:
             self.edit_requested.emit(theme)
         elif action == act_bg:
