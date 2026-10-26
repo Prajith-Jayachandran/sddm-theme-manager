@@ -11,6 +11,11 @@ from ui.theme_editor import (
     QMLSyntaxHighlighter,
     ThemeEditor,
 )
+from ui.theme_tutorial_dialog import (
+    TEMPLATE_MODES_TUTORIAL_DATA,
+    THEME_FILES_TUTORIAL_DATA,
+    ThemeTutorialDialog,
+)
 from ui.theme_writer import ThemeWriter
 
 __all__ = [
@@ -23,4 +28,7 @@ __all__ = [
     "ThemeWriter",
     "ArchiveInstaller",
     "validate_theme_conf",
+    "ThemeTutorialDialog",
+    "THEME_FILES_TUTORIAL_DATA",
+    "TEMPLATE_MODES_TUTORIAL_DATA",
 ]

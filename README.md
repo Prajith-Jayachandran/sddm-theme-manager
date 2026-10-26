@@ -454,6 +454,21 @@ Existing custom sections and keys are preserved without touching the system `/et
 
 ## 📋 Changelog & Recent Updates
 
+### v1.2.2
+- **Smart Theme Scaffolder & Creation Template Modes (Combined 1+2+3+4 Architecture)**:
+  - **100% Asset-Free Minimal Mode (Default)**: Completely eliminates unwanted dummy `background.png` and `preview.png` files during scaffolding. Creates only clean code and configs (`Main.qml`, `theme.conf`, `metadata.desktop`, `metadata.json`).
+  - **Procedural Gradient Fallback in `Main.qml`**: Upgraded greeter template to render an aesthetic procedural dark gradient (`#16161e` → `#1f2335` → `#24283b`) with subtle ambient glow when `background=` is empty or missing, ensuring `sddm-greeter-qt6 --test-mode` executes with **zero errors and zero missing-image warnings**.
+  - **Custom Wallpaper Direct Import**: In the "Create Your Own" form, selecting "Custom Wallpaper" provides an inline image picker to copy your actual wallpaper into the theme directory and automatically generate a matching `preview.png` thumbnail.
+  - **Boilerplate Starter Option**: Preserved for beginners wanting a ready-to-test starter kit with synthetic 1080p background and preview assets.
+  - **Granular Thumbnail Checkbox**: Independent `[ ] Generate preview.png thumbnail` toggle for fine-tuned control over directory contents.
+- **Interactive Theme Files & Creation Modes Tutorial (`ThemeTutorialDialog`)**:
+  - **Dual-Category Walkthrough**: Two interactive guide tabs covering:
+    1. **Theme Files Guide (8 files)**: Exact 60-word specifications for `Main.qml`, `theme.conf`, `theme.conf.user`, `metadata.desktop`, `metadata.json`, `background.png`, `preview.png`, and `Components/`.
+    2. **Template Modes Guide (4 modes)**: Exact 60-word specifications for `Minimal Code Mode`, `Custom Wallpaper Mode`, `Boilerplate Starter Mode`, and `Hybrid Asset Control`.
+  - **Step-by-Step Navigation**: Smooth `[◀ Previous]` and `[Next ▶]` slide controls, `File X of 8` / `Mode X of 4` counters, sidebar jump list, syntax snippets, and 1-click `[✏️ Open in Editor]`.
+  - **Universal Access**: Accessible via the Theme Editor's **"📖 Tutorial / Info"** menu (`F1`), the toolbar button, and the Install Dialog's **"📖 Mode Guide & Tutorial"** button.
+- **Test Suite Expansion**: Test suite expanded from 282 to **307 automated unit and integration tests** with 100% pass rate.
+
 ### v1.2.1
 - **Reverse-Engineered Complete SDDM Theme Scaffolding**:
   - **Zero-Error Greeter Entry Point**: Resolved `Main.qml: No such file or directory` SDDM greeter crash on newly created themes by reverse-engineering existing production themes (`star-rail`, `nier-automata`, `Slot-Silvery-SDDM-6`, `pixel-hollowknight`).

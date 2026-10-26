@@ -1,7 +1,8 @@
 """
 SDDM Theme Manager - Polkit-Aware Theme Writer
 Handles writes to system and user theme directories using D-Bus helper / polkit.
-Provides complete theme scaffolding with Qt 6 greeter templates and starter wallpapers.
+Provides complete theme scaffolding with Qt 6 greeter templates, asset-free minimal mode,
+custom wallpaper import, and boilerplate starter packages.
 """
 
 import json
@@ -21,6 +22,8 @@ DBUS_OBJECT_PATH = "/com/sddmthememanager/Helper"
 DBUS_INTERFACE = "com.sddmthememanager.Helper"
 
 # Verified, fully-featured Qt 6 SDDM Greeter QML template
+# Features procedural gradient fallbacks when no background image is set,
+# allowing asset-free minimal theme generation with zero missing-image errors.
 STARTER_MAIN_QML = """import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -68,18 +71,48 @@ Rectangle {
         }
     }
 
-    // Background wallpaper layer
+    // Background wallpaper layer with procedural gradient fallback
     Item {
         id: bgLayer
         anchors.fill: parent
 
+        // Base procedural dark gradient (always active when no image or image loading)
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#16161e" }
+                GradientStop { position: 0.5; color: "#1f2335" }
+                GradientStop { position: 1.0; color: "#24283b" }
+            }
+        }
+
+        // Ambient accent glow when running in procedural / asset-free mode
+        Rectangle {
+            anchors.fill: parent
+            visible: !(bgImage.status === Image.Ready) && !(config && config.type === "color")
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "#181a1b26" }
+                GradientStop { position: 0.5; color: "#303d59a1" }
+                GradientStop { position: 1.0; color: "#181a1b26" }
+            }
+        }
+
+        // Wallpaper Image (only rendered if config.background is set and file loads cleanly)
         Image {
             id: bgImage
             anchors.fill: parent
-            source: (config && config.background) ? config.background : "background.png"
+            source: (config && config.background) ? config.background : ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            visible: !(config && config.type === "color")
+            visible: (source != "") && (status === Image.Ready) && !(config && config.type === "color")
+        }
+
+        // Solid color background if explicitly specified
+        Rectangle {
+            anchors.fill: parent
+            color: (config && config.background && config.background.indexOf("#") === 0) ? config.background : root.colBg
+            visible: (config && config.type === "color")
         }
 
         // Vignette gradient overlay for high contrast
@@ -557,24 +590,43 @@ class ThemeWriter:
         cls,
         theme_name: str,
         base_dir: Optional[Path | str] = None,
+        mode: str = "minimal",  # "minimal", "custom", "boilerplate"
+        custom_wallpaper_path: Optional[str | Path] = None,
+        generate_preview: bool = False,
     ) -> Tuple[bool, Optional[Path], str]:
         """
-        Scaffolds a complete, fully-functional SDDM theme in /usr/share/sddm/themes/<name>/ (or base_dir):
-        - Creates theme directory
-        - starter theme.conf with full visual defaults
-        - metadata.desktop with Type=sddm-theme, QtVersion=6, MainScript=Main.qml
-        - metadata.json
-        - Main.qml with responsive layout, user/session switcher, clock, power actions
-        - background.png (1920x1080 wallpaper)
-        - preview.png (thumbnail preview)
+        Scaffolds a new SDDM theme in /usr/share/sddm/themes/<name>/ (or base_dir).
+
+        Modes:
+        - "minimal": Zero dummy images created. Pure QML + INI fallback gradient. (Asset-Free)
+        - "custom": Copies user's chosen wallpaper and generates matching preview thumbnail.
+        - "boilerplate": Provisions sample 1080p background.png and preview.png assets.
         """
         dest_base = Path(base_dir) if base_dir else Path("/usr/share/sddm/themes")
         theme_dir = dest_base / theme_name
 
+        bg_setting = ""
+        type_setting = "color"
+        custom_img_path: Optional[Path] = None
+
+        if mode == "custom" and custom_wallpaper_path:
+            cand = Path(custom_wallpaper_path).resolve()
+            if cand.exists():
+                custom_img_path = cand
+                ext = cand.suffix.lower() or ".png"
+                bg_setting = f"background{ext}"
+                type_setting = "image"
+            else:
+                mode = "minimal"
+
+        if mode == "boilerplate":
+            bg_setting = "background.png"
+            type_setting = "image"
+
         starter_conf = (
             "[General]\n"
-            "background=background.png\n"
-            "type=image\n"
+            f"background={bg_setting}\n"
+            f"type={type_setting}\n"
             "font=Sans\n"
             "fontSize=11\n"
             "color=#c0caf5\n"
@@ -621,25 +673,64 @@ class ThemeWriter:
         if not ok:
             return False, None, f"Failed to scaffold Main.qml: {msg}"
 
-        # 5. Generate and write starter background.png and preview.png
-        try:
-            bg_img = generate_starter_wallpaper(theme_name, 1920, 1080)
-            preview_img = bg_img.scaled(640, 360)
+        # 5. Asset handling based on selected mode
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_bg = Path(tmp_dir) / "background.png"
-                tmp_prev = Path(tmp_dir) / "preview.png"
-                bg_img.save(str(tmp_bg))
-                preview_img.save(str(tmp_prev))
+            if mode == "boilerplate":
+                try:
+                    bg_img = generate_starter_wallpaper(theme_name, 1920, 1080)
+                    preview_img = bg_img.scaled(640, 360)
 
-                ok_bg, msg_bg = cls.write_binary_file(theme_dir / "background.png", tmp_bg)
-                if not ok_bg:
-                    logger.warning(f"Failed to write background.png: {msg_bg}")
+                    tmp_bg = tmp_path / "background.png"
+                    tmp_prev = tmp_path / "preview.png"
+                    bg_img.save(str(tmp_bg))
+                    preview_img.save(str(tmp_prev))
 
-                ok_prev, msg_prev = cls.write_binary_file(theme_dir / "preview.png", tmp_prev)
-                if not ok_prev:
-                    logger.warning(f"Failed to write preview.png: {msg_prev}")
-        except Exception as e:
-            logger.warning(f"Could not generate starter images: {e}")
+                    ok_bg, msg_bg = cls.write_binary_file(theme_dir / "background.png", tmp_bg)
+                    if not ok_bg:
+                        logger.warning(f"Failed to write background.png: {msg_bg}")
 
-        return True, theme_dir, f"Theme '{theme_name}' scaffolded successfully at {theme_dir}."
+                    ok_prev, msg_prev = cls.write_binary_file(theme_dir / "preview.png", tmp_prev)
+                    if not ok_prev:
+                        logger.warning(f"Failed to write preview.png: {msg_prev}")
+                except Exception as e:
+                    logger.warning(f"Could not generate boilerplate images: {e}")
+
+            elif mode == "custom" and custom_img_path:
+                try:
+                    # Copy custom wallpaper directly into theme directory
+                    dest_bg_name = bg_setting or "background.png"
+                    ok_bg, msg_bg = cls.write_binary_file(theme_dir / dest_bg_name, custom_img_path)
+                    if not ok_bg:
+                        logger.warning(f"Failed to copy custom wallpaper: {msg_bg}")
+
+                    # Generate scaled thumbnail preview from custom image
+                    from PySide6.QtCore import Qt
+                    from PySide6.QtGui import QImage
+
+                    qimg = QImage(str(custom_img_path))
+                    if not qimg.isNull():
+                        preview_img = qimg.scaled(
+                            640,
+                            360,
+                            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                            Qt.TransformationMode.SmoothTransformation,
+                        )
+                        tmp_prev = tmp_path / "preview.png"
+                        preview_img.save(str(tmp_prev))
+                        cls.write_binary_file(theme_dir / "preview.png", tmp_prev)
+                except Exception as e:
+                    logger.warning(f"Could not process custom wallpaper asset: {e}")
+
+            elif mode == "minimal" and generate_preview:
+                try:
+                    # Optional lightweight thumbnail without generating 1080p background
+                    prev_img = generate_starter_wallpaper(theme_name, 640, 360)
+                    tmp_prev = tmp_path / "preview.png"
+                    prev_img.save(str(tmp_prev))
+                    cls.write_binary_file(theme_dir / "preview.png", tmp_prev)
+                except Exception as e:
+                    logger.warning(f"Could not generate minimal thumbnail: {e}")
+
+        return True, theme_dir, f"Theme '{theme_name}' scaffolded successfully at {theme_dir} (mode: {mode})."

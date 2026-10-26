@@ -34,6 +34,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QMenu,
+    QMenuBar,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -47,6 +49,7 @@ from PySide6.QtWidgets import (
 
 from core.polkit import write_file_privileged
 from core.theme_applier import ThemeApplier
+from ui.theme_tutorial_dialog import ThemeTutorialDialog
 from ui.theme_writer import ThemeWriter
 
 TEXT_EXTENSIONS = {
@@ -546,6 +549,91 @@ class ThemeEditor(QDialog):
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(10)
 
+        # Menu Bar: Tutorial / Info Menu
+        self.menu_bar = QMenuBar(self)
+        self.menu_bar.setStyleSheet(
+            "QMenuBar {"
+            "  background-color: #1f2335;"
+            "  color: #c0caf5;"
+            "  border-bottom: 1px solid #3b4261;"
+            "  font-size: 12px;"
+            "  padding: 2px;"
+            "}"
+            "QMenuBar::item {"
+            "  background: transparent;"
+            "  padding: 4px 12px;"
+            "  border-radius: 4px;"
+            "}"
+            "QMenuBar::item:selected {"
+            "  background-color: #2f354f;"
+            "  color: #ffffff;"
+            "}"
+            "QMenu {"
+            "  background-color: #1f2335;"
+            "  color: #c0caf5;"
+            "  border: 1px solid #3b4261;"
+            "  padding: 4px;"
+            "}"
+            "QMenu::item {"
+            "  padding: 6px 20px 6px 20px;"
+            "  border-radius: 4px;"
+            "}"
+            "QMenu::item:selected {"
+            "  background-color: #3d59a1;"
+            "  color: #ffffff;"
+            "}"
+            "QMenu::separator {"
+            "  height: 1px;"
+            "  background-color: #3b4261;"
+            "  margin: 4px 0;"
+            "}"
+        )
+        self.menu_tutorial = self.menu_bar.addMenu("📖 Tutorial / Info")
+
+        act_tut_full = self.menu_tutorial.addAction("📖 Theme Files Guide & Tutorial (Next/Previous Walkthrough)")
+        act_tut_full.setShortcut(QKeySequence("F1"))
+        act_tut_full.triggered.connect(lambda: self.open_tutorial_dialog(0))
+
+        self.menu_tutorial.addSeparator()
+
+        act_m_qml = self.menu_tutorial.addAction("🧩 Main.qml — Primary Greeter Interface")
+        act_m_qml.triggered.connect(lambda: self.open_tutorial_dialog(0))
+
+        act_m_conf = self.menu_tutorial.addAction("📄 theme.conf — Master Configuration")
+        act_m_conf.triggered.connect(lambda: self.open_tutorial_dialog(1))
+
+        act_m_user = self.menu_tutorial.addAction("⚙️ theme.conf.user — Non-Destructive User Overrides")
+        act_m_user.triggered.connect(lambda: self.open_tutorial_dialog(2))
+
+        act_m_desk = self.menu_tutorial.addAction("🖥️ metadata.desktop — SDDM Greeter Specification")
+        act_m_desk.triggered.connect(lambda: self.open_tutorial_dialog(3))
+
+        act_m_json = self.menu_tutorial.addAction("📋 metadata.json — Theme Package Manifest")
+        act_m_json.triggered.connect(lambda: self.open_tutorial_dialog(4))
+
+        act_m_bg = self.menu_tutorial.addAction("🖼️ background.png — Wallpaper Asset")
+        act_m_bg.triggered.connect(lambda: self.open_tutorial_dialog(5))
+
+        act_m_prev = self.menu_tutorial.addAction("👁️ preview.png — Theme Thumbnail Preview")
+        act_m_prev.triggered.connect(lambda: self.open_tutorial_dialog(6))
+
+        act_m_comp = self.menu_tutorial.addAction("📁 Components/ — Modular UI Sub-components")
+        act_m_comp.triggered.connect(lambda: self.open_tutorial_dialog(7, "files"))
+
+        self.menu_tutorial.addSeparator()
+
+        menu_modes = self.menu_tutorial.addMenu("🛠️ Creation Template Modes Guide")
+        act_mode_min = menu_modes.addAction("🧼 Minimal Code Mode (Asset-Free)")
+        act_mode_min.triggered.connect(lambda: self.open_tutorial_dialog(0, "modes"))
+        act_mode_cust = menu_modes.addAction("🖼️ Custom Wallpaper Mode (Direct Import)")
+        act_mode_cust.triggered.connect(lambda: self.open_tutorial_dialog(1, "modes"))
+        act_mode_boil = menu_modes.addAction("🎨 Boilerplate Starter Mode (Full Kit)")
+        act_mode_boil.triggered.connect(lambda: self.open_tutorial_dialog(2, "modes"))
+        act_mode_hyb = menu_modes.addAction("⚙️ Hybrid Asset Control (Switches)")
+        act_mode_hyb.triggered.connect(lambda: self.open_tutorial_dialog(3, "modes"))
+
+        main_layout.setMenuBar(self.menu_bar)
+
         # Splitter (55% left, 45% right)
         splitter = QSplitter(Qt.Horizontal, self)
         splitter.setStyleSheet("QSplitter::handle { background-color: #24283b; width: 4px; }")
@@ -580,6 +668,13 @@ class ThemeEditor(QDialog):
         self.btn_refresh_files.setToolTip("Refresh theme files list")
         self.btn_refresh_files.clicked.connect(self.populate_files)
         file_header_layout.addWidget(self.btn_refresh_files)
+
+        self.btn_tutorial = QToolButton(left_widget)
+        self.btn_tutorial.setText("📖 Tutorial / Info")
+        self.btn_tutorial.setToolTip("Learn about SDDM theme files, structure, and their purpose (F1)")
+        self.btn_tutorial.setCursor(Qt.PointingHandCursor)
+        self.btn_tutorial.clicked.connect(lambda: self.open_tutorial_dialog(0))
+        file_header_layout.addWidget(self.btn_tutorial)
 
         left_layout.addLayout(file_header_layout)
 
@@ -671,8 +766,30 @@ class ThemeEditor(QDialog):
         sc_bg = QShortcut(QKeySequence("Ctrl+B"), self)
         sc_bg.activated.connect(self.choose_background)
 
+        sc_f1 = QShortcut(QKeySequence("F1"), self)
+        sc_f1.activated.connect(lambda: self.open_tutorial_dialog(0))
+
         sc_esc = QShortcut(QKeySequence("Escape"), self)
         sc_esc.activated.connect(self.close_with_check)
+
+    def open_tutorial_dialog(self, initial_index: int = 0, initial_category: str = "files"):
+        """Opens the interactive SDDM theme files & template modes tutorial dialog."""
+        dlg = ThemeTutorialDialog(self.theme_path, self, initial_category=initial_category)
+        dlg.set_current_index(initial_index)
+        dlg.file_open_requested.connect(self._on_tutorial_open_file)
+        dlg.exec()
+
+    def _on_tutorial_open_file(self, target_filename: str):
+        """Switches active file in editor to target filename if present."""
+        clean_target = target_filename.lower().rstrip("/")
+        for i in range(self.combo_files.count()):
+            path_str = self.combo_files.itemData(i)
+            if not path_str:
+                continue
+            p = Path(path_str)
+            if p.name.lower() == clean_target or p.name.lower().startswith(clean_target):
+                self.combo_files.setCurrentIndex(i)
+                break
 
     def populate_files(self):
         """Scans theme directory recursively for all text/config files and populates file combo box."""

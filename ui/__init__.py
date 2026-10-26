@@ -16,6 +16,11 @@ from .theme_editor import (
     ThemeEditor,
 )
 from .theme_grid import ThemeCard, ThemeGridWidget
+from .theme_tutorial_dialog import (
+    TEMPLATE_MODES_TUTORIAL_DATA,
+    THEME_FILES_TUTORIAL_DATA,
+    ThemeTutorialDialog,
+)
 from .theme_writer import ThemeWriter
 
 __all__ = [
@@ -33,4 +38,7 @@ __all__ = [
     "QMLSyntaxHighlighter",
     "ThemeWriter",
     "ArchiveInstaller",
+    "ThemeTutorialDialog",
+    "THEME_FILES_TUTORIAL_DATA",
+    "TEMPLATE_MODES_TUTORIAL_DATA",
 ]
