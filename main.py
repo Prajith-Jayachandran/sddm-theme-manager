@@ -29,6 +29,11 @@ def parse_args():
         help="Headless execution: check Day/Night schedule and apply the scheduled theme",
     )
     parser.add_argument(
+        "--verify-shield",
+        action="store_true",
+        help="Validate Boot Shield watchdog safety configuration and emergency fallback readiness",
+    )
+    parser.add_argument(
         "--no-polkit",
         action="store_true",
         help="Development fallback: bypass pkexec and call commands with sudo instead (prints warning)",
@@ -55,6 +60,22 @@ def main():
         ok, msg = DayNightScheduler.apply_scheduled()
         print(f"[{'OK' if ok else 'ERROR'}] {msg}")
         sys.exit(0 if ok else 1)
+
+    if args.verify_shield:
+        from core.boot_shield import BootShield
+        report = BootShield.verify_shield_configuration()
+        print("=" * 60)
+        print("  🛡️ SDDM BOOT SHIELD — SYSTEM SAFETY VERIFICATION")
+        print("=" * 60)
+        for check in report["checks"]:
+            mark = "✅ PASS" if check["passed"] else "⚠️ WARN"
+            print(f"  {mark}: {check['name']} — {check['detail']}")
+        print("-" * 60)
+        print(f"  Overall Health : {report['overall_health']}")
+        print(f"  Fallback Theme : {report['fallback_theme']}")
+        print(f"  Active Theme   : {report['active_theme']}")
+        print("=" * 60)
+        sys.exit(0)
 
     # Set application metadata
     app = QApplication(sys.argv)

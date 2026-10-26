@@ -3,12 +3,14 @@ SDDM Theme Manager UI Package
 """
 
 from .archive_installer import ArchiveInstaller
+from .boot_shield_dialog import BootShieldDialog
 from .detail_panel import DetailPanel
 from .install_dialog import InstallDialog
 from .live_console import LiveConsoleDrawer
 from .main_window import MainWindow
 from .preview_overlay import PreviewExitOverlay
 from .store_dialog import StoreDialog
+from .studio_builder import StudioBuilderDialog, StudioCanvas
 from .theme_editor import (
     CodeEditor,
     INISyntaxHighlighter,
@@ -43,4 +45,7 @@ __all__ = [
     "ThemeTutorialDialog",
     "THEME_FILES_TUTORIAL_DATA",
     "TEMPLATE_MODES_TUTORIAL_DATA",
+    "StudioBuilderDialog",
+    "StudioCanvas",
+    "BootShieldDialog",
 ]

@@ -113,11 +113,11 @@ def run_command(
         return -1, "", str(e)
 
 
-def write_file_privileged(filepath: str | Path, content: str) -> Tuple[bool, str]:
+def write_file_privileged(filepath: str | Path, content: str, mode: Optional[str] = None) -> Tuple[bool, str]:
     """
     Write content to a file that may require root permissions.
     Uses 'pkexec /usr/bin/tee <filepath>' or 'sudo /usr/bin/tee <filepath>'.
-    Ensures parent directory exists.
+    Ensures parent directory exists and optionally applies file mode permissions.
     """
     path = Path(filepath).resolve()
     parent = path.parent
@@ -132,6 +132,9 @@ def write_file_privileged(filepath: str | Path, content: str) -> Tuple[bool, str
     tee_binary = shutil.which("tee") or "/usr/bin/tee"
     rc, out, err = run_command([tee_binary, str(path)], privileged=True, input_text=content)
     if rc == 0:
+        if mode:
+            chmod_binary = shutil.which("chmod") or "/usr/bin/chmod"
+            run_command([chmod_binary, mode, str(path)], privileged=True)
         return True, "File written successfully."
     else:
         return False, err or out or f"Write failed with exit code {rc}"

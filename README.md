@@ -479,6 +479,83 @@ Existing custom sections and keys are preserved without touching the system `/et
 
 ## 📋 Changelog & Recent Updates
 
+### v1.3.0 — The 20 Groundbreaking Features Next-Gen Suite
+- **🛡️ Phase 0: Foundation & Safety Shield**:
+  - **Feature 11: "Boot Shield" Never-Get-Locked-Out Watchdog (`core/boot_shield.py`)**:
+    - Automated systemd watchdog service (`sddm-boot-shield.service`) and monitor daemon (`/usr/local/bin/sddm-boot-shield`).
+    - Watches SDDM greeter stability; if a broken theme, corrupt shader, or segfault occurs, automatically reverts `/etc/sddm.conf.d/10-theme.conf` to safe default `breeze` (or first verified system theme) and restarts SDDM within 4 seconds.
+    - CLI validation flag: `sddm-theme-manager --verify-shield`.
+    - Main window status bar: Live **"🛡️ Shield: Active"** status badge and click-to-open **Safety Center Dialog** with crash logs and emergency rollback test.
+
+- **🌌 Phase A: Sensory & Visual Immersion**:
+  - **Feature 1: GLSL Fragment Shader Background Engine (`core/shader_engine.py`)**:
+    - 5 built-in procedural GLSL fragment shaders: *Matrix Digital Rain*, *Retro Synthwave Grid*, *Pulsating Neon Waves*, *Cosmic Fluid Nebula*, and *Deep Space Starfield*.
+    - Resolution-independent rendering (1080p to 8K) with zero video decoding overhead via QML `ShaderEffect`.
+    - 1-click injection and clean restoration in any SDDM theme.
+  - **Feature 2: SDDM Boot Chime & Audio Synthesizer (`core/audio_chime.py`)**:
+    - Procedural audio synthesis producing standalone 16-bit PCM WAV chimes without external audio assets.
+    - Sound presets: *PlayStation 2 Ambient*, *Macintosh Platinum*, *Windows 98 Ambient Wave*, *Cybernetic Voice Beep*, and *Mechanical Switch Click*.
+    - Non-blocking startup hook in `/usr/share/sddm/scripts/Xsetup` with PipeWire (`pw-play`), PulseAudio (`paplay`), and ALSA (`aplay`) support.
+  - **Feature 3: Real-Time Weather & Astronomical Cosmos (`core/weather_service.py`)**:
+    - Queries Open-Meteo REST API (no API key required) for live temperature, conditions, and precipitation.
+    - High-precision Julian astronomical calculator computing live moon phases (New Moon to Full Moon) and illumination.
+    - Generates dynamic QML particle canvas rendering glass raindrops with refraction, falling snowflakes, or twinkling celestial stars.
+  - **Feature 4: Pre-Login MPRIS Media Capsule (`core/mpris_bridge.py`)**:
+    - Discovers running media players (Spotify, Firefox, VLC, MPD) and extracts live track metadata.
+    - Writes world-readable shared telemetry to `/tmp/sddm-mpris.json` for isolated greeter sessions.
+    - Generates floating "Dynamic Island" capsule with album art, track/artist marquee, and playback controls (⏮ ⏯ ⏭).
+  - **Feature 5: 24-Hour Solar Time-Lapse & Satellite Imagery (`core/solar_timelapse.py`)**:
+    - Computes continuous 24-hour solar elevation angles (Dawn, Golden Hour, Zenith High Noon, Sunset, Dusk, Midnight).
+    - Maps wallpapers across 24 solar phases and provides live NOAA GOES geostationary Earth satellite frames.
+
+- **🔐 Phase B: Security & Authentication Suite**:
+  - **Feature 6: Cryptographic QR Passkey Mobile Login (`core/passkey_server.py`)**:
+    - Local cryptographic challenge server creating time-limited HMAC-SHA256 session tokens.
+    - Generates standalone SVG QR code matrix for passwordless biometric authentication from mobile devices.
+  - **Feature 7: Bluetooth BLE Proximity Auto-Unlock (`core/ble_proximity.py`)**:
+    - Bluetooth Low Energy RSSI scanner measuring signal strength from paired smartwatches and smartphones.
+    - Log-distance path loss approximation calculating distance in meters and triggering auto-unlock within 1.2m.
+  - **Feature 8: "Panic Mode" / Decoy Duress Profile (`core/panic_mode.py`)**:
+    - Protects user privacy under duress by accepting a secondary decoy PIN.
+    - Redirects login to an ephemeral guest sandbox with tmpfs overlay and zero access to private keys or documents.
+    - Includes automated user permissions privacy audit for sensitive directories (`.ssh`, `.gnupg`, `.config`).
+  - **Feature 9: FIDO2 / YubiKey Hardware Token Visualizer (`core/fido2_detector.py`)**:
+    - Detects connected hardware security keys (YubiKey, Nitrokey, SoloKeys, Feitian) via USB/sysfs.
+    - Generates holographic glowing key badge pulsing amber when awaiting touch and glowing green upon verification.
+
+- **📊 Phase C: Power Tools & Telemetry**:
+  - **Feature 10: "Cold Boot HUD" Pre-Login Hardware Telemetry (`core/system_hud.py`)**:
+    - High-speed direct reader from `/proc` and `/sysfs` (CPU temp/load, RAM usage, battery health, root disk space, and pending package updates).
+    - Generates sleek glass cyberpunk telemetry bar for SDDM greeters.
+  - **Feature 12: Pre-Login Sticky Notes & Household Bulletin (`core/sticky_notes.py`)**:
+    - Multi-user bulletin board storing pinned memo cards with expiration dates and colors.
+    - Renders interactive floating sticky notes directly on the SDDM greeter.
+  - **Feature 13: Multi-Session "Live Peek" Window (`core/session_peek.py`)**:
+    - Integrates with `loginctl` to query active graphical sessions (Wayland/X11), desktop environments, and idle times.
+    - Displays interactive user workspace preview switcher cards.
+  - **Feature 18: "OS Chameleon" 1-Click Distro Hopper Presets (`core/chameleon_presets.py`)**:
+    - 4 complete, pixel-perfect theme architectures: *macOS Sequoia Aerial*, *Windows 11 Fluent Acrylic*, *Steam Deck OLED Console*, and *Cyberpunk 2077 Netwatch HUD*.
+
+- **🎨 Phase D: Developer & Creator Studios**:
+  - **Feature 14: Zero-Code WYSIWYG Drag-and-Drop Theme Studio (`ui/studio_builder.py`)**:
+    - Interactive visual Qt canvas with live property inspector, color pickers, border radius sliders, and layout presets (Center, Left, Split).
+    - 1-click "Compile & Export" compiling designs directly into production-ready QtQuick QML packages.
+  - **Feature 15: Hot-Reload "Live Studio" for Developers (`core/dev_reload.py`)**:
+    - Dev simulation environment with mock hardware states: time-of-day slider, battery percentage and charging toggles, and multi-monitor aspect ratio switcher (16:9, 16:10, 21:9 Ultrawide, 9:16 Vertical).
+  - **Feature 16: Prompt-to-Theme AI Ricing Engine (`core/ai_generator.py`)**:
+    - Natural language prompt to theme generator interpreting aesthetic descriptions into harmonic palettes, typography, and complete QML themes.
+  - **Feature 17: Interactive Pre-Login Mini-Games (`core/greeter_games.py`)**:
+    - Pure-QML retro mini-games (*Flappy Tux*, *Cyber Pong 2077*) playable directly on the SDDM greeter screen.
+
+- **🌐 Phase E: Ecosystem & Monetization**:
+  - **Feature 19: Decentralized Theme Hub & "Rice-Drop" Marketplace (`core/marketplace.py`)**:
+    - Git-backed community theme catalog with name search, tag filtering (minimal, cyberpunk, pastel, glass), star ratings, and 1-click `.tar.gz` bundle packaging.
+  - **Feature 20: Built-in Creator Monetization ("Support the Rice") (`core/monetization.py`)**:
+    - Discovers artist sponsorship metadata (`X-SDDM-Sponsor-Github`, `X-SDDM-Sponsor-Kofi`, `X-SDDM-Sponsor-Patreon`) and activates Supporter Pro Pass perks.
+
+- **Test Suite Expansion**:
+  - Test suite expanded from 358 to **481 automated unit and integration tests** with **100% pass rate (0 failures)**.
+
 ### v1.2.4
 - **Live Dev & Diagnostic Studio (Unified 1+2+3+4 Architecture) in Theme Editor**:
   - **Layer 1: Live Play Greeter Runner (`LiveGreeterRunner`)**:

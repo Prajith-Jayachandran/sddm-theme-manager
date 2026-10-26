@@ -566,6 +566,13 @@ setup_path_integration
 setup_polkit
 sync_sddm_themes_and_permissions
 
+# Verify Boot Shield watchdog safety configuration
+if [ -f "$APP_DIR/main.py" ]; then
+    echo ""
+    echo -e "${col_bold}Verifying Boot Shield Watchdog Safety...${col_reset}"
+    python3 "$APP_DIR/main.py" --verify-shield || true
+fi
+
 echo ""
 echo "=============================================="
 echo -e "${col_green} SDDM Theme Manager installed successfully!${col_reset}"

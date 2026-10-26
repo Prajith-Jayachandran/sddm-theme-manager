@@ -33,9 +33,12 @@ from core.polkit import detect_sddm_qt_version, is_sddm_installed
 from core.preview import PreviewManager
 from core.theme_applier import ThemeApplier
 from core.theme_scanner import Theme, ThemeScanner
+from core.boot_shield import BootShield
+from ui.boot_shield_dialog import BootShieldDialog
 from ui.detail_panel import DetailPanel
 from ui.preview_overlay import PreviewExitOverlay
 from ui.store_dialog import StoreDialog
+from ui.studio_builder import StudioBuilderDialog
 from ui.theme_grid import ThemeGridWidget
 
 
@@ -266,6 +269,22 @@ class MainWindow(QMainWindow):
         btn_daemon.clicked.connect(self.open_daemon_dialog)
         toolbar.addWidget(btn_daemon)
 
+        toolbar.addSeparator()
+
+        # Action: Theme Studio (Feature 14)
+        btn_studio = QPushButton(" 🎨 Studio")
+        btn_studio.setToolTip("Launch Zero-Code WYSIWYG Theme Studio")
+        btn_studio.setCursor(Qt.PointingHandCursor)
+        btn_studio.clicked.connect(self.open_studio_builder)
+        toolbar.addWidget(btn_studio)
+
+        # Action: Boot Shield (Feature 11)
+        btn_shield = QPushButton(" 🛡️ Shield")
+        btn_shield.setToolTip("Inspect Boot Shield safety watchdog & fail-safe rollback status")
+        btn_shield.setCursor(Qt.PointingHandCursor)
+        btn_shield.clicked.connect(self.open_boot_shield_dialog)
+        toolbar.addWidget(btn_shield)
+
 
         # Spacer
         spacer = QWidget()
@@ -317,6 +336,11 @@ class MainWindow(QMainWindow):
         self.lbl_status_greeter.setStyleSheet("color: #7aa2f7; padding-right: 15px;")
         status_bar.addWidget(self.lbl_status_greeter)
 
+        self.lbl_status_shield = QLabel("🛡️ Shield: Ready")
+        self.lbl_status_shield.setStyleSheet("color: #73daca; font-weight: 600; padding-right: 15px;")
+        self.lbl_status_shield.setToolTip("Boot Shield fail-safe watchdog status")
+        status_bar.addWidget(self.lbl_status_shield)
+
         self.lbl_status_count = QLabel("0 themes")
         self.lbl_status_count.setStyleSheet("color: #9aa5ce;")
         status_bar.addPermanentWidget(self.lbl_status_count)
@@ -328,6 +352,14 @@ class MainWindow(QMainWindow):
 
         self.lbl_status_active.setText(f"Active Theme: {active_name or 'None'}")
         self.lbl_status_count.setText(f"{len(themes)} themes found")
+
+        shield_status = BootShield.verify_shield_configuration()
+        if shield_status["shield_active"]:
+            self.lbl_status_shield.setText("🛡️ Shield: Active")
+            self.lbl_status_shield.setStyleSheet("color: #73daca; font-weight: 600; padding-right: 15px;")
+        else:
+            self.lbl_status_shield.setText("🛡️ Shield: Ready")
+            self.lbl_status_shield.setStyleSheet("color: #7aa2f7; font-weight: 600; padding-right: 15px;")
 
         # Health verification of configured active theme
         is_healthy, health_msg, act_id = ThemeApplier.check_active_theme_health()
@@ -685,6 +717,17 @@ class MainWindow(QMainWindow):
         """Opens the SDDM daemon autologin & session settings."""
         from ui.daemon_dialog import DaemonConfigDialog
         dlg = DaemonConfigDialog(self)
+        dlg.exec()
+
+    def open_studio_builder(self):
+        """Opens the Zero-Code WYSIWYG Theme Studio."""
+        dlg = StudioBuilderDialog(self)
+        if dlg.exec():
+            self.refresh_themes()
+
+    def open_boot_shield_dialog(self):
+        """Opens the Boot Shield safety status & fail-safe rollback dialog."""
+        dlg = BootShieldDialog(self)
         dlg.exec()
 
     def closeEvent(self, event):
