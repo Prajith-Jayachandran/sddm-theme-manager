@@ -44,6 +44,7 @@ class DetailPanel(QFrame):
     tweak_clicked = Signal(object)  # Theme
     lint_clicked = Signal(object)  # Theme
     export_clicked = Signal(object)  # Theme
+    edit_clicked = Signal(object)  # Theme
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -175,26 +176,36 @@ class DetailPanel(QFrame):
         self.btn_sync_desktop.clicked.connect(self._on_sync_desktop_clicked)
         actions_box.addWidget(self.btn_sync_desktop)
 
-        # Advanced tools row (Tweaker, Linter, Exporter)
+        # Advanced tools: Editor, Tweaker, Linter, Exporter
         tools_layout = QHBoxLayout()
         tools_layout.setSpacing(6)
+
+        self.btn_edit_theme = QPushButton("✏️ Edit Files…")
+        self.btn_edit_theme.setCursor(Qt.PointingHandCursor)
+        self.btn_edit_theme.clicked.connect(self._on_edit_theme_clicked)
+        tools_layout.addWidget(self.btn_edit_theme)
 
         self.btn_tweak = QPushButton("⚙️ Customize…")
         self.btn_tweak.setCursor(Qt.PointingHandCursor)
         self.btn_tweak.clicked.connect(self._on_tweak_clicked)
         tools_layout.addWidget(self.btn_tweak)
 
+        actions_box.addLayout(tools_layout)
+
+        tools_layout2 = QHBoxLayout()
+        tools_layout2.setSpacing(6)
+
         self.btn_lint = QPushButton("🛡️ Check")
         self.btn_lint.setCursor(Qt.PointingHandCursor)
         self.btn_lint.clicked.connect(self._on_lint_clicked)
-        tools_layout.addWidget(self.btn_lint)
+        tools_layout2.addWidget(self.btn_lint)
 
         self.btn_export = QPushButton("📦 Export")
         self.btn_export.setCursor(Qt.PointingHandCursor)
         self.btn_export.clicked.connect(self._on_export_clicked)
-        tools_layout.addWidget(self.btn_export)
+        tools_layout2.addWidget(self.btn_export)
 
-        actions_box.addLayout(tools_layout)
+        actions_box.addLayout(tools_layout2)
 
         # Secondary Actions (Open folder, Remove)
         secondary_layout = QHBoxLayout()
@@ -249,6 +260,11 @@ class DetailPanel(QFrame):
             self.btn_reset_bg.setEnabled(False)
             self.btn_remove.setEnabled(False)
             self.btn_open_folder.setEnabled(False)
+            self.btn_edit_theme.setEnabled(False)
+            self.btn_tweak.setEnabled(False)
+            self.btn_lint.setEnabled(False)
+            self.btn_export.setEnabled(False)
+            self.btn_sync_desktop.setEnabled(False)
             return
 
         self.lbl_title.setText(theme.name)
@@ -287,6 +303,7 @@ class DetailPanel(QFrame):
 
         # Button states
         self.btn_preview.setEnabled(True)
+        self.btn_edit_theme.setEnabled(True)
         self.btn_set_bg.setEnabled(True)
         self.btn_sync_desktop.setEnabled(True)
         self.btn_tweak.setEnabled(True)
@@ -433,3 +450,7 @@ class DetailPanel(QFrame):
     def _on_export_clicked(self):
         if self.current_theme:
             self.export_clicked.emit(self.current_theme)
+
+    def _on_edit_theme_clicked(self):
+        if self.current_theme:
+            self.edit_clicked.emit(self.current_theme)

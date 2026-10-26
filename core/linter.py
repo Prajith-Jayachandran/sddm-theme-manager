@@ -81,6 +81,35 @@ class ThemeLinter:
         if not qml_files:
             issues.append(LintIssue(p, 0, "ERROR", "No QML files found in theme directory."))
 
+        # Check metadata.desktop and MainScript existence
+        metadata_file = p / "metadata.desktop"
+        if metadata_file.exists():
+            main_script = "Main.qml"
+            try:
+                for line in metadata_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    if line.strip().startswith("MainScript="):
+                        main_script = line.split("=", 1)[1].strip()
+                        break
+            except Exception:
+                pass
+
+            if not (p / main_script).exists():
+                issues.append(LintIssue(
+                    file_path=metadata_file,
+                    line_number=0,
+                    severity="ERROR",
+                    message=f"Main script '{main_script}' specified in metadata.desktop does not exist.",
+                    suggested_fix=f"Create {main_script} or update MainScript in metadata.desktop.",
+                ))
+        elif not (p / "Main.qml").exists():
+            issues.append(LintIssue(
+                file_path=p,
+                line_number=0,
+                severity="ERROR",
+                message="Theme is missing Main.qml entry script.",
+                suggested_fix="Create Main.qml as the primary greeter entry point.",
+            ))
+
         for qml in qml_files:
             try:
                 lines = qml.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -150,6 +179,22 @@ class ThemeLinter:
         patched_count = 0
 
         qml_files = list(p.rglob("*.qml"))
+
+        # Auto-scaffold Main.qml if theme has no QML files
+        main_qml = p / "Main.qml"
+        if not main_qml.exists() and not qml_files:
+            try:
+                from ui.theme_writer import STARTER_MAIN_QML
+                if is_system:
+                    ok, msg = write_file_privileged(main_qml, STARTER_MAIN_QML)
+                    if not ok:
+                        return False, f"Failed to generate Main.qml: {msg}", patched_count
+                else:
+                    main_qml.write_text(STARTER_MAIN_QML, encoding="utf-8")
+                patched_count += 1
+                qml_files = [main_qml]
+            except Exception as e:
+                return False, f"Error generating Main.qml: {e}", patched_count
         for qml in qml_files:
             try:
                 original = qml.read_text(encoding="utf-8", errors="ignore")

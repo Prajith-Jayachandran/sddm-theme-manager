@@ -19,6 +19,36 @@ Works identically on **KDE Plasma**, **GNOME**, **Hyprland**, and other window m
   - **Direct System Storage**: All theme downloads (KDE Store) and archive installs (`.tar.gz`, `.zip`) install straight into `/usr/share/sddm/themes/` with permissions normalized (`0755` directories, `0644` files) via Polkit (`pkexec`).
   - **Unified Complete Deletion**: Deleting any theme permanently wipes the system directory in `/usr/share/sddm/themes/` and purges any legacy copy in `~/.local/share/sddm/themes/` simultaneously.
 
+- **📁 "Install from File" Dual-Card Chooser & Theme Scaffolding**:
+  - **Dual-Card Chooser**: Interactive modal offering **"📁 Create Your Own"** and **"📦 Install from Archive"**.
+  - **Inline Name Validation**: Real-time regex verification (`^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$`), length boundaries (2–50 chars), and directory collision detection against `/usr/share/sddm/themes/` and `~/.local/share/sddm/themes/`.
+  - **Zero-Error Qt 6 Greeter Engine**: Reverse-engineered from production SDDM themes to eliminate greeter crashes (`Main.qml: No such file or directory` and `SddmComponents 2.0` property collisions).
+  - **Complete Out-of-the-Box Scaffolding**: Automatically provisions a fully functioning Qt 6 / `SddmComponents 2.0` responsive `Main.qml` (user switching with avatar mask, session selector, 12h/24h clock, power buttons), `metadata.desktop` (`Type=sddm-theme`, `QtVersion=6`), `theme.conf`, `metadata.json`, and aesthetic 1920×1080 gradient `background.png` and `preview.png`.
+  - **Auto-Healing Linter & Preview Safeguard**: Pre-validates `MainScript` existence before running greeter previews, and auto-scaffolds `Main.qml` for any broken or incomplete themes.
+
+- **🛠️ Multi-File Theme Editor & Code Customizer**:
+  - **Universal Access for All Themes**: 1-click **"✏️ Edit Theme…"** option available for both newly created and existing themes via the **Main Toolbar**, **Detail Panel**, and **Card Right-Click Context Menu**.
+  - **Multi-File Navigation & Discovery**: Dropdown file selector (`QComboBox`) automatically indexes and allows switching between all files in any theme:
+    - `theme.conf` (Main SDDM Greeter configuration)
+    - `theme.conf.user` (User overrides)
+    - `metadata.desktop` (SDDM desktop environment metadata)
+    - `metadata.json` (Theme package properties)
+    - `Main.qml`, `login.qml`, and nested QML components (`Components/*.qml`)
+    - Any auxiliary script or stylesheet files
+  - **Dual Highlighters**:
+    - `INISyntaxHighlighter`: Catppuccin Mocha syntax colors for sections, keys, `=`, values, `# comments`, and underlined missing values.
+    - `QMLSyntaxHighlighter`: Highlighting for QML components, keywords, properties, numbers, strings, and multi-line comments (`/* ... */`).
+  - **Live INI Validation & Escape Badges**: Monospace line numbering gutter with real-time detection of unrecognized escape sequences (⚠️ badges).
+  - **Debounced Live Preview (300ms)**: Real-time background parser with escape resolution (`\n`, `\t`, `\s`, `\\`), dynamic aspect-ratio scaling, video/color badges, and metadata info strip (`resolution`, `file size`).
+  - **Integrated File Creator**: Built-in **"➕ New File…"** tool to scaffold new files (`theme.conf.user`, QML components) directly inside the theme directory.
+  - **Polkit-Aware Save & Apply**: Dedicated buttons for **"💾 Save File"** (`Ctrl+S`) and **"⚡ Save & Apply"** (saves file, updates `/etc/sddm.conf.d/10-theme.conf`, restarts SDDM, and presents a 2-second restarting overlay).
+
+- **📦 Enhanced Archive Installation & Conflict Backup**:
+  - **Single-Wrapped-Folder Flattening**: Detects nested theme subdirectories and automatically flattens them to the theme root.
+  - **Strict Syntax Verification**: Verifies `theme.conf` existence and parses INI syntax with exact line number reporting on error.
+  - **Conflict Resolution & Backups**: Prompts for confirmation when replacing an existing theme and automatically backs up the existing version to `<name>.bak.<timestamp>/`.
+  - **Non-Blocking Large Archive Extraction**: Leverages `QThreadPool` and `QRunnable` for archives exceeding 10 MB to prevent UI freezes.
+
 - **🎨 Desktop Synchronization & Ricing Tools**:
   - **Match Desktop Wallpaper**: 1-click sync that automatically detects your active desktop wallpaper from **KDE Plasma**, **Hyprland** (`swww`/`hyprpaper`), **GNOME**, **Sway**, **Feh**, **Nitrogen**, or **XFCE** and sets it as the SDDM background.
   - **Dynamic Palette & Pywal Accent Colors**: Samples dominant and accent colors from wallpapers using native `QImage` pixel analysis, and imports color schemes directly from Pywal (`~/.cache/wal/colors.json`).
@@ -424,6 +454,58 @@ Existing custom sections and keys are preserved without touching the system `/et
 
 ## 📋 Changelog & Recent Updates
 
+### v1.2.1
+- **Reverse-Engineered Complete SDDM Theme Scaffolding**:
+  - **Zero-Error Greeter Entry Point**: Resolved `Main.qml: No such file or directory` SDDM greeter crash on newly created themes by reverse-engineering existing production themes (`star-rail`, `nier-automata`, `Slot-Silvery-SDDM-6`, `pixel-hollowknight`).
+  - **Full Qt 6 & SddmComponents 2.0 Template**: `scaffold_theme()` now automatically generates a complete, responsive `Main.qml` supporting:
+    - User switching with avatar masking (`OpacityMask`) and fallback icons.
+    - Session switching across Wayland and X11 sessions (`sessionModel`).
+    - Real-time 12h/24h digital clock and date header.
+    - Password input with active focus, clear feedback, and SDDM greeter authentication signals (`onLoginFailed`, `onLoginSucceeded`).
+    - Safe styled power action buttons (Reboot, Shut Down) avoiding `SddmComponents 2.0` Button property conflicts.
+  - **Aesthetic Starter Wallpaper & Preview Generation**:
+    - Automatically generates high-resolution 1920×1080 gradient `background.png` and 640×360 `preview.png` via native `QPainter` and `QLinearGradient`/`QRadialGradient`.
+    - Automatically handles privileged copying into `/usr/share/sddm/themes/` using `write_binary_file()` and `copy_file_privileged()`.
+  - **Complete Metadata Specifications**:
+    - Generates `metadata.desktop` with required `Type=sddm-theme`, `QtVersion=6`, `MainScript=Main.qml`, and `ConfigFile=theme.conf`.
+    - Generates `theme.conf` with visual defaults (`background=background.png`, `type=image`, `font=Sans`, `fontSize=11`, `color=#c0caf5`, `accentColor=#7aa2f7`, `clockFormat=24h`, `showClock=true`).
+- **Live Greeter Preview Validation & Diagnostics**:
+  - Enhanced `PreviewManager.start_preview()` to validate that the theme's `MainScript` exists prior to spawning `sddm-greeter-qt6`, preventing unhandled black screens and providing an actionable error notification.
+- **Theme Linter & Auto-Patcher Missing Entry Detection**:
+  - `ThemeLinter.lint_theme()` now verifies the existence of `Main.qml` and `MainScript` referenced in `metadata.desktop`.
+  - `ThemeLinter.patch_theme_for_qt6()` automatically scaffolds a valid `Main.qml` if a theme directory is missing its entry script.
+- **Test Suite Expansion**:
+  - Test suite expanded to **259 automated unit and integration tests** with 100% pass rate, including automated `sddm-greeter-qt6 --test-mode` verification.
+
+### v1.2.0
+- **Multi-File Theme Viewing & Editing for All Themes**:
+  - Added universal **"✏️ Edit Theme…"** action accessible for both existing and newly installed themes via the **Main Toolbar**, **Detail Panel**, and **Card Right-Click Context Menu**.
+  - **Full File Tree Switcher**: Added an interactive `QComboBox` file selector in the Theme Editor to navigate, view, and edit any file in the theme directory: `theme.conf`, `theme.conf.user`, `metadata.desktop`, `metadata.json`, `Main.qml`, nested QML components (`Components/*.qml`), scripts, and text files.
+  - **Dual Highlighting Engine**: Automatic switching between `INISyntaxHighlighter` (for `.conf`, `.ini`, `.desktop`, `.user`) and `QMLSyntaxHighlighter` (for `.qml`, `.js`, `.json`).
+  - **In-Editor File Creator**: Built-in **"➕ New File…"** dialog to scaffold custom overrides (e.g. `theme.conf.user`, QML components) directly inside the theme directory.
+  - **Dedicated Save Actions**: Added **"💾 Save File"** (`Ctrl+S`) for saving the active file and **"⚡ Save & Apply"** for saving and applying to the SDDM system greeter.
+- **"Install from File" Dual-Card Modal Chooser**:
+  - Replaced basic file dialog with an interactive dual-card chooser dialog offering **"📁 Create Your Own"** and **"📦 Install from Archive"**.
+  - **Inline Name Validation**: Real-time regex verification (`^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$`), length boundaries (2–50 chars), and collision detection against system (`/usr/share/sddm/themes/`) and user directories.
+  - **Automated Scaffolding**: Instantly provisions starter `theme.conf`, `metadata.json`, and `metadata.desktop` prior to launching the editor.
+- **Dedicated INI & Code Theme Editor (`ThemeEditor`)**:
+  - Separate 920×640 px dark dialog with dynamic dirty tracking (`Edit: <name> — <filename> *`).
+  - **Syntax Highlighter (`INISyntaxHighlighter`)**: Catppuccin Mocha syntax highlighting for sections (`#89b4fa`), keys (`#a6e3a1`), operators (`#f9e2af`), values (`#cdd6f4`), comments (`#6c7086`), and underlined empty keys (`#f38ba8`).
+  - **Line Number Gutter (`LineNumberArea`)**: Monospace line numbering with real-time escape sequence analyzer displaying ⚠️ warning badges for unrecognized escape sequences.
+  - **Debounced Live Preview (300ms)**: High-speed preview renderer parsing `background=`, `type=`, and `font=` with escape resolution (`\n`, `\t`, `\s`, `\\`), dynamic aspect ratio scaling, video/color badges, and metadata info strip (`resolution`, `file size`).
+  - **Polkit-Aware Save & Apply**: Directly updates `theme.conf`, updates `/etc/sddm.conf.d/10-theme.conf`, restarts SDDM via elevated polkit runner, and shows a 2-second restarting overlay.
+  - **Keyboard Ergonomics**: Full shortcut bindings for `Ctrl+S` (Save File), `Ctrl+B` (Choose Background), `Ctrl+/` (Comment Toggle), `Tab` (4 Spaces), and `Esc` (Safe Exit Confirmation).
+- **Hardened Archive Installation & Conflict Backup (`ArchiveInstaller`)**:
+  - Added single-wrapped-folder detection and automatic extraction directory flattening.
+  - Added strict `theme.conf` validation with syntax error reporting including exact line numbers.
+  - Added conflict resolution prompting with automatic backup to `<name>.bak.<timestamp>/`.
+  - Added non-blocking `QThreadPool` / `QRunnable` extraction for archives exceeding 10 MB.
+- **Polkit D-Bus Helper & Isolation Package**:
+  - Introduced `ThemeWriter` supporting both elevated Polkit and D-Bus helper service (`com.sddmthememanager.Helper`).
+  - Created modular `sddm_theme_manager` package allowing isolated imports (`from sddm_theme_manager.install_dialog import InstallDialog`).
+- **Comprehensive Test Suite Expansion**:
+  - Test suite expanded from 206 to **248 automated tests** with 100% pass rate.
+
 ### v1.1.0
 - **Transformation into Complete SDDM Control Center with 10 New Features**:
   1. **Desktop Wallpaper Synchronization**: 1-click sync from active desktop environment (KDE Plasma, Hyprland, GNOME, Sway, Feh, Nitrogen, XFCE) directly to SDDM background.
@@ -494,7 +576,7 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── theme_applier.py             # Writes drop-in config & restarts SDDM
 │   ├── background.py                # Manages theme.conf.user overrides
 │   ├── installer.py                 # Direct /usr/share/sddm installer & 1-click cleaner
-│   ├── preview.py                   # Manages sddm-greeter --test-mode subprocess
+│   ├── preview.py                   # Manages sddm-greeter --test-mode subprocess & entry validation
 │   ├── polkit.py                    # Elevated pkexec / sudo runner
 │   ├── store_client.py              # KDE Store / Pling OCS API client
 │   ├── desktop_wallpaper.py         # Multi-DE active wallpaper detector & synchronizer
@@ -503,12 +585,16 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── theme_configurator.py        # Visual theme tweaker engine (clock, blur, dim, font)
 │   ├── avatar_manager.py            # User profile login picture manager
 │   ├── scheduler.py                 # Automated Day/Night theme switcher & systemd timer
-│   ├── linter.py                    # Qt5 vs Qt6 compatibility scanner & auto-patcher
+│   ├── linter.py                    # Qt5/Qt6 compatibility scanner, entry validator & auto-patcher
 │   ├── exporter.py                  # Portable theme bundle packager (.tar.gz/.tar.zst)
 │   ├── display_manager.py           # Multi-monitor display detector & Xsetup configurator
 │   └── daemon_config.py             # SDDM daemon settings, autologin, & session manager
 ├── ui/
 │   ├── main_window.py               # Main window, toolbar, status bar & live watcher
+│   ├── install_dialog.py            # Dual-card chooser dialog (scaffold vs archive)
+│   ├── theme_editor.py              # Multi-file code editor & debounced live preview dialog
+│   ├── theme_writer.py              # Polkit file writer, Qt 6 greeter template & wallpaper generator
+│   ├── archive_installer.py         # Archive extraction, flattening, validation & backup
 │   ├── theme_grid.py                # Scrollable card grid with filter & sort
 │   ├── detail_panel.py              # Metadata panel & quick action tool buttons
 │   ├── store_dialog.py              # KDE Store browser modal
@@ -520,8 +606,19 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── daemon_dialog.py             # SDDM daemon autologin & session settings dialog
 │   ├── preview_overlay.py           # Floating exit pill during live greeter preview
 │   └── styles.qss                   # Modern DE-agnostic dark/light stylesheet
+├── sddm_theme_manager/              # Isolated package for standalone imports
+│   ├── __init__.py
+│   ├── install_dialog.py
+│   ├── theme_editor.py
+│   ├── theme_writer.py
+│   ├── archive_installer.py
+│   └── polkit/
+│       ├── helper.py                # D-Bus service & CLI privileged helper
+│       └── com.sddmthememanager.policy
 ├── polkit/
-│   └── 40-sddm-theme-manager.rules   # JavaScript Polkit rule file
+│   ├── 40-sddm-theme-manager.rules   # JavaScript Polkit rule file
+│   ├── com.sddmthememanager.policy  # Polkit action definitions
+│   └── helper.py                    # Elevated execution D-Bus service helper
 ├── resources/
 │   ├── icons/
 │   │   ├── sddm-theme-manager.svg

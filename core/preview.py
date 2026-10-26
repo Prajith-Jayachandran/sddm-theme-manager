@@ -90,6 +90,24 @@ class PreviewManager(QObject):
             self.preview_error.emit(msg)
             return False, msg
 
+        # Validate that the theme has its MainScript before launching greeter
+        main_script = "Main.qml"
+        metadata_file = t_path / "metadata.desktop"
+        if metadata_file.exists():
+            try:
+                for line in metadata_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    if line.strip().startswith("MainScript="):
+                        main_script = line.split("=", 1)[1].strip()
+                        break
+            except Exception:
+                pass
+
+        script_path = t_path / main_script
+        if not script_path.exists():
+            msg = f"Cannot preview theme '{t_path.name}': Main script '{main_script}' was not found in directory."
+            self.preview_error.emit(msg)
+            return False, msg
+
         cmd = [
             greeter_bin,
             "--test-mode",

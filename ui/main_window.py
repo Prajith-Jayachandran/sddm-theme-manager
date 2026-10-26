@@ -118,6 +118,7 @@ class MainWindow(QMainWindow):
         self.theme_grid.reset_background_requested.connect(self.reset_theme_background)
         self.theme_grid.remove_requested.connect(self.remove_theme)
         self.theme_grid.open_folder_requested.connect(self.open_theme_folder)
+        self.theme_grid.edit_requested.connect(self.open_theme_editor)
 
         self.detail_panel = DetailPanel(self)
         self.detail_panel.preview_clicked.connect(self.toggle_preview)
@@ -131,6 +132,7 @@ class MainWindow(QMainWindow):
         self.detail_panel.tweak_clicked.connect(self.open_tweaker_dialog)
         self.detail_panel.lint_clicked.connect(self.open_linter_dialog)
         self.detail_panel.export_clicked.connect(self.export_theme_archive)
+        self.detail_panel.edit_clicked.connect(self.open_theme_editor)
 
         self.splitter.addWidget(self.theme_grid)
         self.splitter.addWidget(self.detail_panel)
@@ -226,6 +228,13 @@ class MainWindow(QMainWindow):
         btn_store.setCursor(Qt.PointingHandCursor)
         btn_store.clicked.connect(self.open_store_dialog)
         toolbar.addWidget(btn_store)
+
+        # Action: Edit Theme
+        btn_edit_theme = QPushButton(" ✏️ Edit Theme…")
+        btn_edit_theme.setToolTip("View and edit theme.conf, QML, and other files of the selected theme")
+        btn_edit_theme.setCursor(Qt.PointingHandCursor)
+        btn_edit_theme.clicked.connect(self.open_selected_theme_editor)
+        toolbar.addWidget(btn_edit_theme)
 
         toolbar.addSeparator()
 
@@ -605,6 +614,24 @@ class MainWindow(QMainWindow):
             self.refresh_themes(select_path=theme.path)
         else:
             QMessageBox.warning(self, "Desktop Wallpaper Notice", msg)
+
+    def open_theme_editor(self, theme: Optional[Theme] = None):
+        """Opens full theme editor dialog to view/edit theme.conf, QML, and other files."""
+        target = theme or self.current_selected_theme
+        if not target:
+            QMessageBox.information(self, "No Theme Selected", "Please select a theme to view or edit its files.")
+            return
+
+        from ui.theme_editor import ThemeEditor
+
+        dlg = ThemeEditor(target.path, self)
+        dlg.theme_saved.connect(lambda p: self.refresh_themes(select_path=p))
+        dlg.exec()
+        self.refresh_themes(select_path=target.path)
+
+    def open_selected_theme_editor(self):
+        """Toolbar action to open theme editor for the currently selected theme."""
+        self.open_theme_editor(self.current_selected_theme)
 
     def open_tweaker_dialog(self, theme: Theme):
         """Opens the visual theme customizer for the selected theme."""
