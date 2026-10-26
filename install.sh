@@ -165,6 +165,7 @@ cp -r "$SCRIPT_DIR/main.py" "$APP_DIR/"
 cp -r "$SCRIPT_DIR/core" "$APP_DIR/"
 cp -r "$SCRIPT_DIR/ui" "$APP_DIR/"
 cp -r "$SCRIPT_DIR/resources" "$APP_DIR/"
+[ -d "$SCRIPT_DIR/sddm_theme_manager" ] && cp -r "$SCRIPT_DIR/sddm_theme_manager" "$APP_DIR/"
 chmod -R a+rX "$APP_DIR"
 
 # Create launcher executable script in bin directory

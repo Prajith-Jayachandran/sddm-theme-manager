@@ -552,22 +552,14 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Failed to Reset Background", f"Error resetting background:\n\n{msg}")
 
     def install_from_file(self):
-        """Installs theme archive (.tar.gz, .zip, etc.) into user directory."""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select SDDM Theme Archive",
-            str(Path.home()),
-            "Theme Archives (*.tar.gz *.tgz *.tar.xz *.tar.bz2 *.tar *.zip);;All Files (*)",
-        )
-        if not file_path:
-            return
+        """Opens modal chooser dialog to create custom theme or install from archive."""
+        from ui.install_dialog import InstallDialog
 
-        ok, installed_path, msg = ThemeInstaller.install_from_archive(file_path)
-        if ok and installed_path:
-            QMessageBox.information(self, "Theme Installed", msg)
-            self.refresh_themes(select_path=installed_path)
-        else:
-            QMessageBox.critical(self, "Installation Failed", f"Could not install theme:\n\n{msg}")
+        dlg = InstallDialog(self)
+        dlg.theme_installed.connect(lambda p: self.refresh_themes(select_path=p))
+        if dlg.exec():
+            if dlg.installed_path:
+                self.refresh_themes(select_path=dlg.installed_path)
 
     def open_store_dialog(self):
         """Opens KDE Store dialog for online themes."""

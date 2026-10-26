@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+  <vendor>SDDM Theme Manager</vendor>
+  <vendor_url>https://github.com/sddm-theme-manager</vendor_url>
+
+  <action id="com.sddmthememanager.write-file">
+    <description>Write files to SDDM system theme directories</description>
+    <message>Authentication is required to write theme files to system storage</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="com.sddmthememanager.restart-sddm">
+    <description>Restart SDDM display manager</description>
+    <message>Authentication is required to restart the SDDM display service</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+</policyconfig>
