@@ -1,8 +1,11 @@
 # SDDM Theme Manager
 
-A standalone, desktop-environment-agnostic GUI application for managing and customizing [SDDM](https://github.com/sddm/sddm) (Simple Desktop Display Manager) themes.
+A standalone, desktop-environment-agnostic GUI application for managing, customizing, and ricing [SDDM](https://github.com/sddm/sddm) (Simple Desktop Display Manager) Qt 5 & Qt 6 themes.
 
-Works identically on **KDE Plasma**, **GNOME**, **Hyprland**, and other window managers / desktop environments without being tied to any specific desktop ecosystem or control center.
+> [!NOTE]
+> **Built for GNOME, Hyprland & Independent Window Managers**:
+> While KDE Plasma includes a built-in SDDM configuration module in its System Settings, users of **GNOME**, **Hyprland**, **Sway**, **River**, **Wayfire**, **bspwm**, and **i3** have lacked a dedicated graphical control center to preview, edit, configure, and rice SDDM greeters.
+> **SDDM Theme Manager fills this gap**, providing a complete, independent, first-class suite with Wayland compositor support (`hyprpaper`, `swww`, `swaybg`, `feh`), live greeter testing with non-trapping exit overlays, automated Polkit privileges, and 20 Next-Gen ricing features.
 
 ---
 
@@ -479,6 +482,43 @@ Existing custom sections and keys are preserved without touching the system `/et
 
 ## 📋 Changelog & Recent Updates
 
+### v1.5.0 — UI De-Collision, Live Business Logic Daemon & GNOME / Hyprland Ricing Hub
+- **🖥️ Dedicated for GNOME, Hyprland & Wayland Tiling Compositors**:
+  - Purpose-built for users who lack KDE Plasma's System Settings KCM module, bringing full GUI management, live previews, and automated privileges to GNOME, Hyprland, Sway, and independent window managers.
+  - Native integration with Hyprland (`swww`, `hyprpaper`) and GNOME GSettings for 1-click desktop wallpaper matching.
+  - Wayland greeter preview window management with non-trapping floating exit pill and instant `Esc` emergency kill.
+- **✨ Complete Greeter UI Layout De-Collision & Status Docks**:
+  - Solved all widget collisions and overlapping elements in equipped greeters.
+  - **`nextgenTopBar` (Top-Center, `z: 30`)**: Centered status island grouping the **Media Capsule**, **FIDO2 Hardware Key Indicator**, and **System Hardware HUD**.
+  - **`nextgenActionDock` (Top-Right, `z: 40`)**: Floating pill dock grouping compact interactive pills for **Mobile Passkey QR**, **Sticky Notes**, and **🎮 Mini-Games**.
+  - The bottom region of the display is kept 100% clear for SDDM default components (user card, password field, session switcher, reboot/shutdown buttons).
+- **⚙️ Live Telemetry & Command Daemon (`core/live_daemon.py`)**:
+  - Lightweight background daemon running at ~1 Hz synchronizing real-time MPRIS player metadata, hardware metrics (CPU temp, RAM used/total, free root disk, battery charging status, pending updates), USB sysfs FIDO2 key presence, and household sticky notes.
+  - Writes world-readable status files to `/tmp/sddm-*.json` accessible by greeter sessions.
+- **🌐 Embedded Passkey & Feature HTTP REST API (`core/passkey_server.py`)**:
+  - Embedded local HTTP daemon listening on `http://127.0.0.1:8089/` serving:
+    - `/api/telemetry` — Live hardware sensor metrics.
+    - `/api/mpris` & `/api/mpris/{play-pause|next|previous}` — Live media metadata and remote playback control.
+    - `/api/fido` — USB security key presence & state.
+    - `/api/notes` — Pre-login memo bulletin notes.
+    - `/auth/<id>/status` & `/auth/<id>/verify` — Mobile biometric authorization.
+- **🔒 Qt 6 Local File XHR Security Resolution**:
+  - Injected `QML_XHR_ALLOW_FILE_READ=1` into preview and live greeter environments, resolving Qt 6's default security block on local `file:///` `XMLHttpRequest` calls.
+- **🎵 Interactive Media Playback Controls**:
+  - Greeter Media Capsule island now features interactive `MouseArea` controls (⏮ ⏯ ⏭) with command queues executing real `playerctl` and D-Bus actions.
+- **🌟 Next-Gen Suite Hub & Dedicated Desktop Dialogs**:
+  - Added **"🌟 Next-Gen Suite ▾"** toolbar dropdown in `MainWindow` with 1-click access to all 20 features:
+    - **[StickyNotesDialog](ui/sticky_notes_dialog.py)** (Feature 12): Add, edit, remove, and sync pre-login household memos.
+    - **[ChameleonDialog](ui/chameleon_dialog.py)** (Feature 18): 1-click generator for macOS Sequoia, Windows 11, ChromeOS, and Cyberpunk HUD presets.
+    - **[AIRicingDialog](ui/ai_ricing_dialog.py)** (Feature 16): Natural language prompt-to-theme synthesizer.
+    - **[SecurityDialog](ui/security_dialog.py)** (Features 6, 7, 8, 9): Passkey QR preview, FIDO2 rescan, duress panic PIN, and BLE proximity.
+    - **[MarketplaceDialog](ui/marketplace_dialog.py)** (Feature 19): Decentralized community theme catalog and `.tar.gz` publisher.
+    - **[MonetizationDialog](ui/monetization_dialog.py)** (Feature 20): Artist tipping links and Supporter Pro Pass management.
+- **📜 DetailPanel Scroll Overflow Fix**:
+  - Moved the actions box inside `self.content_layout` within `self.scroll_content`, eliminating button clipping on compact screen resolutions.
+- **🧪 Comprehensive Test Suite Milestone**:
+  - Expanded test suite to **610 automated unit and integration tests across 45 test sections** with **100% pass rate (0 failures)**.
+
 ### v1.4.0 — Universal Theme Enhancer & Next-Gen Master Suite Template
 - **⚡ Universal Theme Enhancer Engine (`core/theme_enhancer.py`)**:
   - **Universal 1-Click Upgrade for Existing Themes**: Easily equips *any* existing installed SDDM theme (`star-rail`, `nier-automata`, `Slot-Silvery-SDDM-6`, `pixel-hollowknight`, etc.) with the complete Next-Gen sensory, visual, and telemetry suite.
@@ -757,7 +797,7 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── preview.py                   # Manages sddm-greeter --test-mode subprocess & entry validation
 │   ├── polkit.py                    # Elevated pkexec / sudo runner
 │   ├── store_client.py              # KDE Store / Pling OCS API client
-│   ├── desktop_wallpaper.py         # Multi-DE active wallpaper detector & synchronizer
+│   ├── desktop_wallpaper.py         # Multi-DE active wallpaper detector & synchronizer (Hyprland/GNOME/KDE)
 │   ├── color_palette.py             # Dominant palette & Pywal color extractor
 │   ├── video_background.py          # Animated & video wallpaper manager (MP4/WebM/GIF)
 │   ├── theme_configurator.py        # Visual theme tweaker engine (clock, blur, dim, font)
@@ -767,7 +807,22 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── exporter.py                  # Portable theme bundle packager (.tar.gz/.tar.zst)
 │   ├── display_manager.py           # Multi-monitor display detector & Xsetup configurator
 │   ├── daemon_config.py             # SDDM daemon settings, autologin, & session manager
-│   └── theme_enhancer.py            # Universal Next-Gen feature injector & rollback engine
+│   ├── theme_enhancer.py            # Universal Next-Gen feature injector & rollback engine
+│   ├── live_daemon.py               # Real-time hardware telemetry, MPRIS & status daemon
+│   ├── passkey_server.py            # Embedded HTTP REST API & mobile passkey auth server
+│   ├── boot_shield.py               # Failsafe watchdog & crash recovery daemon
+│   ├── ai_generator.py              # Prompt-to-Theme natural language AI ricing engine
+│   ├── chameleon_presets.py         # OS Chameleon theme presets (macOS, Win11, Cyberpunk)
+│   ├── marketplace.py               # Decentralized community theme catalog & publisher
+│   ├── monetization.py              # Artist sponsorship & Supporter Pro Pass manager
+│   ├── sticky_notes.py              # Pre-login household sticky notes manager
+│   ├── system_hud.py                # Hardware telemetry HUD collector
+│   ├── mpris_bridge.py              # MPRIS2 player discovery & media capsule bridge
+│   ├── fido2_detector.py            # USB sysfs FIDO2/YubiKey hardware key detector
+│   ├── ble_proximity.py             # Bluetooth Low Energy RSSI proximity scanner
+│   ├── panic_mode.py                # Duress panic decoy sandbox & privacy auditor
+│   ├── solar_timelapse.py           # 24-hour solar calculation & satellite imagery
+│   └── greeter_games.py             # Embedded retro QML mini-games (Flappy Tux, Pong)
 ├── ui/
 │   ├── main_window.py               # Main window, toolbar, status bar & live watcher
 │   ├── install_dialog.py            # Dual-card chooser dialog (scaffold vs archive)
@@ -776,7 +831,7 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── theme_writer.py              # Polkit file writer, Qt 6 greeter template & wallpaper generator
 │   ├── archive_installer.py         # Archive extraction, flattening, validation & backup
 │   ├── theme_grid.py                # Scrollable card grid with filter & sort
-│   ├── detail_panel.py              # Metadata panel & quick action tool buttons
+│   ├── detail_panel.py              # Metadata panel & scrollable action tool buttons
 │   ├── store_dialog.py              # KDE Store browser modal
 │   ├── tweaker_dialog.py            # Interactive visual theme customizer dialog
 │   ├── avatar_dialog.py             # Circular profile avatar cropping dialog
@@ -784,6 +839,14 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── linter_dialog.py             # Theme compatibility report & auto-patcher modal
 │   ├── display_dialog.py            # Primary monitor selection dialog
 │   ├── daemon_dialog.py             # SDDM daemon autologin & session settings dialog
+│   ├── boot_shield_dialog.py        # Boot Shield safety watchdog & crash recovery dialog
+│   ├── sticky_notes_dialog.py       # Household pre-login sticky notes bulletin dialog
+│   ├── chameleon_dialog.py          # OS Chameleon presets generator dialog
+│   ├── ai_ricing_dialog.py          # Prompt-to-theme AI ricing studio modal
+│   ├── security_dialog.py           # Passkey QR, FIDO2, Panic Mode & BLE security center
+│   ├── marketplace_dialog.py        # Rice-Drop community marketplace & package publisher
+│   ├── monetization_dialog.py       # Creator tips & Supporter Pro Pass dialog
+│   ├── studio_builder.py            # Zero-Code WYSIWYG Drag-and-Drop Theme Studio
 │   ├── preview_overlay.py           # Floating exit pill during live greeter preview
 │   └── styles.qss                   # Modern DE-agnostic dark/light stylesheet
 ├── sddm_theme_manager/              # Isolated package for standalone imports
@@ -792,6 +855,13 @@ Existing custom sections and keys are preserved without touching the system `/et
 │   ├── theme_editor.py
 │   ├── theme_writer.py
 │   ├── archive_installer.py
+│   ├── live_daemon.py
+│   ├── sticky_notes_dialog.py
+│   ├── chameleon_dialog.py
+│   ├── ai_ricing_dialog.py
+│   ├── security_dialog.py
+│   ├── marketplace_dialog.py
+│   ├── monetization_dialog.py
 │   └── polkit/
 │       ├── helper.py                # D-Bus service & CLI privileged helper
 │       └── com.sddmthememanager.policy
