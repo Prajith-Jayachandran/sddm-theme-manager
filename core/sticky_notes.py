@@ -134,7 +134,7 @@ class StickyNotesManager:
 
     @classmethod
     def generate_notes_qml(cls) -> str:
-        """Generate floating sticky notes bulletin QML widget for SDDM greeter."""
+        """Generate floating sticky notes bulletin QML widget for SDDM greeter with live sync and pagination."""
         notes = cls.load_notes()
         first_note = notes[0] if notes else None
         title = first_note.title if first_note else "Welcome to SDDM"
@@ -146,38 +146,147 @@ class StickyNotesManager:
 
 Item {{
     id: notesWidgetRoot
-    width: 220
-    height: 140
-    anchors.top: parent.top
-    anchors.right: parent.right
-    anchors.margins: 28
-    z: 15
+    property bool isExpanded: false
+    property var notes: []
+    property int noteIdx: 0
+    property string activeTitle: "{title}"
+    property string activeContent: "{content}"
+    property string activeAuthor: "{author}"
+    property string activeColor: "{color}"
 
+    width: isExpanded ? 240 : 96
+    height: isExpanded ? 165 : 32
+    z: 40
+
+    function refreshNotes() {{
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://127.0.0.1:8089/api/notes");
+        xhr.onreadystatechange = function() {{
+            if (xhr.readyState === XMLHttpRequest.DONE) {{
+                if (xhr.status === 200) {{
+                    try {{
+                        var list = JSON.parse(xhr.responseText);
+                        if (list && list.length > 0) {{
+                            notesWidgetRoot.notes = list;
+                            var n = list[notesWidgetRoot.noteIdx % list.length];
+                            notesWidgetRoot.activeTitle = n.title || "Note";
+                            notesWidgetRoot.activeContent = n.content || "";
+                            notesWidgetRoot.activeAuthor = n.author || "User";
+                            notesWidgetRoot.activeColor = n.color || "#fef08a";
+                        }}
+                    }} catch(e) {{}}
+                }} else {{
+                    var fXhr = new XMLHttpRequest();
+                    fXhr.open("GET", "file:///tmp/sddm-sticky-notes.json");
+                    fXhr.onreadystatechange = function() {{
+                        if (fXhr.readyState === XMLHttpRequest.DONE && fXhr.status === 200) {{
+                            try {{
+                                var list2 = JSON.parse(fXhr.responseText);
+                                if (list2 && list2.length > 0) {{
+                                    notesWidgetRoot.notes = list2;
+                                    var n2 = list2[notesWidgetRoot.noteIdx % list2.length];
+                                    notesWidgetRoot.activeTitle = n2.title || "Note";
+                                    notesWidgetRoot.activeContent = n2.content || "";
+                                    notesWidgetRoot.activeAuthor = n2.author || "User";
+                                    notesWidgetRoot.activeColor = n2.color || "#fef08a";
+                                }}
+                            }} catch(e) {{}}
+                        }}
+                    }};
+                    fXhr.send();
+                }}
+            }}
+        }};
+        xhr.send();
+    }}
+
+    Timer {{
+        interval: 2500
+        running: true
+        repeat: true
+        onTriggered: refreshNotes()
+    }}
+
+    Component.onCompleted: refreshNotes()
+
+    // Collapsed Pill Button
     Rectangle {{
         anchors.fill: parent
-        color: "{color}"
-        radius: 8
-        rotation: 1.5
+        visible: !notesWidgetRoot.isExpanded
+        radius: 16
+        color: pillMouse.containsMouse ? "#1e293b" : Qt.rgba(0.07, 0.09, 0.15, 0.85)
+        border.color: pillMouse.containsMouse ? "#f59e0b" : Qt.rgba(0.3, 0.45, 0.7, 0.4)
+        border.width: 1
 
-        // Subtle Pin Header
-        Rectangle {{
-            width: 14
-            height: 14
-            radius: 7
-            color: "#e11d48"
+        Row {{
+            anchors.centerIn: parent
+            spacing: 6
+            Text {{ text: "📝"; font.pixelSize: 13 }}
+            Text {{
+                text: "Notes (" + (notesWidgetRoot.notes.length > 0 ? notesWidgetRoot.notes.length : "1") + ")"
+                color: "#e2e8f0"
+                font.bold: true
+                font.pixelSize: 11
+            }}
+        }}
+
+        MouseArea {{
+            id: pillMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: notesWidgetRoot.isExpanded = true
+        }}
+    }}
+
+    // Expanded Note Card
+    Rectangle {{
+        anchors.fill: parent
+        visible: notesWidgetRoot.isExpanded
+        color: notesWidgetRoot.activeColor
+        radius: 10
+        rotation: 0.5
+        border.color: Qt.rgba(0,0,0,0.15)
+        border.width: 1
+
+        // Pin Header & Close Button
+        Item {{
             anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.topMargin: 6
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 24
+
+            Rectangle {{
+                width: 14; height: 14; radius: 7; color: "#e11d48"
+                anchors.centerIn: parent
+            }}
+
+            Rectangle {{
+                width: 20; height: 20; radius: 10
+                color: closeNoteMouse.containsMouse ? "#cbd5e1" : "transparent"
+                anchors.right: parent.right
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {{ anchors.centerIn: parent; text: "✕"; color: "#334155"; font.pixelSize: 10; font.bold: true }}
+                MouseArea {{
+                    id: closeNoteMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: notesWidgetRoot.isExpanded = false
+                }}
+            }}
         }}
 
         Column {{
             anchors.fill: parent
-            anchors.margins: 14
-            anchors.topMargin: 22
-            spacing: 4
+            anchors.margins: 12
+            anchors.topMargin: 24
+            spacing: 3
 
             Text {{
-                text: "{title}"
+                text: notesWidgetRoot.activeTitle
                 font.bold: true
                 font.pixelSize: 12
                 color: "#1e293b"
@@ -186,7 +295,7 @@ Item {{
             }}
 
             Text {{
-                text: "{content}"
+                text: notesWidgetRoot.activeContent
                 font.pixelSize: 11
                 color: "#334155"
                 wrapMode: Text.Wrap
@@ -195,12 +304,58 @@ Item {{
                 width: parent.width
             }}
 
-            Text {{
-                text: "— {author}"
-                font.italic: true
-                font.pixelSize: 10
-                color: "#64748b"
-                anchors.right: parent.right
+            Item {{
+                width: parent.width
+                height: 20
+
+                // Pagination if multiple notes
+                Row {{
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+                    visible: notesWidgetRoot.notes.length > 1
+
+                    Text {{
+                        text: "◀"
+                        color: "#475569"
+                        font.pixelSize: 10
+                        MouseArea {{
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {{
+                                notesWidgetRoot.noteIdx = (notesWidgetRoot.noteIdx - 1 + notesWidgetRoot.notes.length) % notesWidgetRoot.notes.length;
+                                refreshNotes();
+                            }}
+                        }}
+                    }}
+                    Text {{
+                        text: (notesWidgetRoot.noteIdx + 1) + "/" + notesWidgetRoot.notes.length
+                        color: "#475569"
+                        font.pixelSize: 10
+                    }}
+                    Text {{
+                        text: "▶"
+                        color: "#475569"
+                        font.pixelSize: 10
+                        MouseArea {{
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {{
+                                notesWidgetRoot.noteIdx = (notesWidgetRoot.noteIdx + 1) % notesWidgetRoot.notes.length;
+                                refreshNotes();
+                            }}
+                        }}
+                    }}
+                }}
+
+                Text {{
+                    text: "— " + notesWidgetRoot.activeAuthor
+                    font.italic: true
+                    font.pixelSize: 10
+                    color: "#64748b"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                }}
             }}
         }}
     }}

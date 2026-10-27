@@ -169,7 +169,7 @@ class SystemHUDTelemetry:
 
     @classmethod
     def generate_hud_qml(cls, m: Optional[HardwareMetrics] = None) -> str:
-        """Generate sleek cyberpunk / glass HUD overlay QML widget."""
+        """Generate sleek cyberpunk / glass HUD overlay QML widget with live telemetry timer."""
         metrics = m or cls.snapshot_metrics()
         bat_str = f"{metrics.battery_pct}% {'⚡' if metrics.battery_charging else '🔋'}" if metrics.battery_pct is not None else "AC ⚡"
 
@@ -179,59 +179,115 @@ Item {{
     id: hudRoot
     width: hudFrame.width
     height: hudFrame.height
-    anchors.bottom: parent.bottom
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.bottomMargin: 16
     z: 25
+
+    property real cpuTemp: {metrics.cpu_temp_c}
+    property real ramUsed: {metrics.ram_used_gb}
+    property real ramTotal: {metrics.ram_total_gb}
+    property real diskFree: {metrics.disk_free_gb}
+    property string batText: "{bat_str}"
+    property int updatesCount: {metrics.pending_updates}
+
+    function refreshTelemetry() {{
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://127.0.0.1:8089/api/telemetry");
+        xhr.onreadystatechange = function() {{
+            if (xhr.readyState === XMLHttpRequest.DONE) {{
+                if (xhr.status === 200) {{
+                    try {{
+                        var d = JSON.parse(xhr.responseText);
+                        if (d.cpu_temp_c !== undefined) hudRoot.cpuTemp = d.cpu_temp_c;
+                        else if (d.cpu_temp !== undefined) hudRoot.cpuTemp = d.cpu_temp;
+                        if (d.ram_used_gb !== undefined) hudRoot.ramUsed = d.ram_used_gb;
+                        else if (d.ram_used !== undefined) hudRoot.ramUsed = d.ram_used;
+                        if (d.ram_total_gb !== undefined) hudRoot.ramTotal = d.ram_total_gb;
+                        else if (d.ram_total !== undefined) hudRoot.ramTotal = d.ram_total;
+                        if (d.disk_free_gb !== undefined) hudRoot.diskFree = d.disk_free_gb;
+                        else if (d.disk_free !== undefined) hudRoot.diskFree = d.disk_free;
+                        if (d.pending_updates !== undefined) hudRoot.updatesCount = d.pending_updates;
+                        if (d.battery_pct !== null && d.battery_pct !== undefined) {{
+                            hudRoot.batText = d.battery_pct + "% " + (d.battery_charging ? "⚡" : "🔋");
+                        }}
+                    }} catch(e) {{}}
+                }} else {{
+                    var fXhr = new XMLHttpRequest();
+                    fXhr.open("GET", "file:///tmp/sddm-telemetry.json");
+                    fXhr.onreadystatechange = function() {{
+                        if (fXhr.readyState === XMLHttpRequest.DONE && fXhr.status === 200) {{
+                            try {{
+                                var d2 = JSON.parse(fXhr.responseText);
+                                if (d2.cpu_temp !== undefined) hudRoot.cpuTemp = d2.cpu_temp;
+                                if (d2.ram_used !== undefined) hudRoot.ramUsed = d2.ram_used;
+                                if (d2.ram_total !== undefined) hudRoot.ramTotal = d2.ram_total;
+                                if (d2.disk_free !== undefined) hudRoot.diskFree = d2.disk_free;
+                                if (d2.pending_updates !== undefined) hudRoot.updatesCount = d2.pending_updates;
+                            }} catch(e) {{}}
+                        }}
+                    }};
+                    fXhr.send();
+                }}
+            }}
+        }};
+        xhr.send();
+    }}
+
+    Timer {{
+        interval: 2000
+        running: true
+        repeat: true
+        onTriggered: refreshTelemetry()
+    }}
+
+    Component.onCompleted: refreshTelemetry()
 
     Rectangle {{
         id: hudFrame
-        width: metricsRow.implicitWidth + 36
-        height: 38
-        radius: 19
-        color: Qt.rgba(0.05, 0.07, 0.12, 0.85)
-        border.color: Qt.rgba(0.2, 0.35, 0.6, 0.4)
+        width: metricsRow.implicitWidth + 24
+        height: 28
+        radius: 14
+        color: Qt.rgba(0.05, 0.07, 0.12, 0.82)
+        border.color: Qt.rgba(0.2, 0.35, 0.6, 0.35)
         border.width: 1
 
         Row {{
             id: metricsRow
             anchors.centerIn: parent
-            spacing: 16
+            spacing: 12
 
             Text {{
-                text: "🌡️ {metrics.cpu_temp_c}°C"
-                color: {metrics.cpu_temp_c} > 75 ? "#f87171" : "#38bdf8"
-                font.pixelSize: 12
+                text: "🌡️ " + hudRoot.cpuTemp + "°C"
+                color: hudRoot.cpuTemp > 75 ? "#f87171" : "#38bdf8"
+                font.pixelSize: 10
                 font.bold: true
                 verticalAlignment: Text.AlignVCenter
             }}
 
             Text {{
-                text: "🧠 {metrics.ram_used_gb} / {metrics.ram_total_gb} GB"
-                color: "#e2e8f0"
-                font.pixelSize: 12
+                text: "🧠 " + hudRoot.ramUsed + " / " + hudRoot.ramTotal + "G"
+                color: "#cbd5e1"
+                font.pixelSize: 10
                 verticalAlignment: Text.AlignVCenter
             }}
 
             Text {{
-                text: "💾 {metrics.disk_free_gb} GB Free"
+                text: "💾 " + hudRoot.diskFree + "G"
                 color: "#94a3b8"
-                font.pixelSize: 12
+                font.pixelSize: 10
                 verticalAlignment: Text.AlignVCenter
             }}
 
             Text {{
-                text: "{bat_str}"
+                text: hudRoot.batText
                 color: "#4ade80"
-                font.pixelSize: 12
+                font.pixelSize: 10
                 verticalAlignment: Text.AlignVCenter
             }}
 
             Text {{
-                text: "📦 {metrics.pending_updates} Updates"
-                color: {metrics.pending_updates} > 0 ? "#fbbf24" : "#64748b"
-                font.pixelSize: 12
-                font.bold: {metrics.pending_updates} > 0
+                text: "📦 " + hudRoot.updatesCount + " pkg"
+                color: hudRoot.updatesCount > 0 ? "#fbbf24" : "#64748b"
+                font.pixelSize: 10
+                font.bold: hudRoot.updatesCount > 0
                 verticalAlignment: Text.AlignVCenter
             }}
         }}

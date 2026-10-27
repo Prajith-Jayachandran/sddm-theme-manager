@@ -12,6 +12,7 @@ from .dev_reload import DevReloadEnvironment
 from .fido2_detector import FIDO2Detector
 from .greeter_games import GreeterGamesManager
 from .installer import ThemeInstaller
+from .live_daemon import LiveTelemetryDaemon
 from .live_runner import LiveGreeterRunner, QMLErrorParser
 from .marketplace import DecentralizedMarketplace
 from .monetization import CreatorMonetizationManager
@@ -43,6 +44,7 @@ __all__ = [
     "ThemeScanner",
     "ThemeApplier",
     "ThemeEnhancer",
+    "LiveTelemetryDaemon",
     "BackgroundManager",
     "ThemeInstaller",
     "BootShield",

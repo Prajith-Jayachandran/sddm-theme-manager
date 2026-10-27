@@ -28,6 +28,10 @@ class MarketThemeItem:
     version: str
     preview_url: str
 
+    @property
+    def rating(self) -> float:
+        return min(5.0, round(self.stars / 300.0, 1)) if self.stars else 4.5
+
 
 BUILTIN_COMMUNITY_CATALOG: List[MarketThemeItem] = [
     MarketThemeItem(

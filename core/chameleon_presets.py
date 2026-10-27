@@ -458,3 +458,5 @@ class ChameleonPresetsManager:
             return True, f"Theme '{preset.name}' generated at {dest_dir}."
         except Exception as e:
             return False, f"Failed to generate theme: {e}"
+
+    export_preset_theme = export_preset_to_theme

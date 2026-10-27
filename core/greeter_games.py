@@ -27,11 +27,18 @@ Item {
     height: 480
     anchors.centerIn: parent
     focus: true
+    z: 99
 
     property int score: 0
     property real tuxY: 200
     property real tuxVelocity: 0
     property bool isGameOver: false
+
+    onVisibleChanged: {
+        if (visible) {
+            gameRoot.forceActiveFocus();
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -40,6 +47,41 @@ Item {
         border.width: 2
         radius: 12
         clip: true
+
+        // Header with Close Button
+        Item {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 36
+            z: 10
+
+            Rectangle {
+                width: 24
+                height: 24
+                radius: 12
+                color: closeMouse.containsMouse ? "#ef4444" : "#1e293b"
+                anchors.right: parent.right
+                anchors.rightMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "✕"
+                    color: "#f8fafc"
+                    font.bold: true
+                    font.pixelSize: 11
+                }
+
+                MouseArea {
+                    id: closeMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: gameRoot.visible = false
+                }
+            }
+        }
 
         // Tux Player
         Rectangle {
@@ -62,11 +104,11 @@ Item {
         Text {
             anchors.top: parent.top
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.margins: 16
+            anchors.margins: 12
             text: "Score: " + gameRoot.score
             color: "#ffffff"
             font.bold: true
-            font.pixelSize: 18
+            font.pixelSize: 16
         }
 
         // Game Over Banner
@@ -82,14 +124,30 @@ Item {
                 anchors.centerIn: parent
                 spacing: 6
                 Text { text: "GAME OVER"; color: "#ef4444"; font.bold: true; font.pixelSize: 16; anchors.horizontalCenter: parent.horizontalCenter }
-                Text { text: "Press Space to Restart"; color: "#94a3b8"; font.pixelSize: 12; anchors.horizontalCenter: parent.horizontalCenter }
+                Text { text: "Click or Space to Restart"; color: "#94a3b8"; font.pixelSize: 12; anchors.horizontalCenter: parent.horizontalCenter }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                gameRoot.forceActiveFocus();
+                if (gameRoot.isGameOver) {
+                    gameRoot.tuxY = 200;
+                    gameRoot.tuxVelocity = -8;
+                    gameRoot.score = 0;
+                    gameRoot.isGameOver = false;
+                } else {
+                    gameRoot.tuxVelocity = -8;
+                    gameRoot.score += 1;
+                }
             }
         }
     }
 
     Timer {
         interval: 25
-        running: !gameRoot.isGameOver
+        running: gameRoot.visible && !gameRoot.isGameOver
         repeat: true
         onTriggered: {
             gameRoot.tuxVelocity += 0.6; // Gravity
@@ -114,6 +172,8 @@ Item {
             gameRoot.score += 1;
         }
     }
+
+    Keys.onEscapePressed: gameRoot.visible = false
 }
 """
 

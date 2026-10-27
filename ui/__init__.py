@@ -12,6 +12,12 @@ from .preview_overlay import PreviewExitOverlay
 from .store_dialog import StoreDialog
 from .studio_builder import StudioBuilderDialog, StudioCanvas
 from .theme_enhancer_dialog import ThemeEnhancerDialog
+from .chameleon_dialog import ChameleonDialog
+from .sticky_notes_dialog import StickyNotesDialog
+from .ai_ricing_dialog import AIRicingDialog
+from .security_dialog import SecurityDialog
+from .marketplace_dialog import MarketplaceDialog
+from .monetization_dialog import MonetizationDialog
 from .theme_editor import (
     CodeEditor,
     INISyntaxHighlighter,
@@ -50,4 +56,10 @@ __all__ = [
     "StudioCanvas",
     "BootShieldDialog",
     "ThemeEnhancerDialog",
+    "ChameleonDialog",
+    "StickyNotesDialog",
+    "AIRicingDialog",
+    "SecurityDialog",
+    "MarketplaceDialog",
+    "MonetizationDialog",
 ]

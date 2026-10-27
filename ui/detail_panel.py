@@ -122,14 +122,11 @@ class DetailPanel(QFrame):
         self.lbl_meta_bg = self._create_meta_row("Background:", meta_layout)
 
         self.content_layout.addWidget(self.meta_frame)
-        self.content_layout.addStretch()
+        self.content_layout.addSpacing(10)
 
-        self.scroll_content.setWidget(content_widget)
-        panel_layout.addWidget(self.scroll_content)
-
-        # 5. Bottom Actions Area
-        actions_box = QVBoxLayout()
-        actions_box.setSpacing(8)
+        # 5. Actions Area (placed inside scrollable content so buttons never overflow or overlap)
+        self.actions_box = QVBoxLayout()
+        self.actions_box.setSpacing(8)
 
         # Preview & Apply row
         main_btns_layout = QHBoxLayout()
@@ -146,7 +143,7 @@ class DetailPanel(QFrame):
         self.btn_apply.clicked.connect(self._on_apply_clicked)
         main_btns_layout.addWidget(self.btn_apply)
 
-        actions_box.addLayout(main_btns_layout)
+        self.actions_box.addLayout(main_btns_layout)
 
         # Equip Next-Gen Features Button
         self.btn_equip = QPushButton("⚡ Equip Next-Gen Features…")
@@ -154,14 +151,14 @@ class DetailPanel(QFrame):
         self.btn_equip.setStyleSheet("background-color: #3b2d54; color: #bb9af7; border: 1px solid #7aa2f7; border-radius: 4px; padding: 6px; font-weight: bold;")
         self.btn_equip.setToolTip("Equip theme with startup audio chime, GLSL shaders, weather, HUD, and MPRIS")
         self.btn_equip.clicked.connect(self._on_equip_clicked)
-        actions_box.addWidget(self.btn_equip)
+        self.actions_box.addWidget(self.btn_equip)
 
         # Sync Theme to System Button
         self.btn_sync = QPushButton("Sync to SDDM (/usr/share)")
         self.btn_sync.setCursor(Qt.PointingHandCursor)
         self.btn_sync.setStyleSheet("background-color: #2e3c64; color: #7aa2f7; border: 1px solid #3d59a1; border-radius: 4px; padding: 5px;")
         self.btn_sync.clicked.connect(self._on_sync_clicked)
-        actions_box.addWidget(self.btn_sync)
+        self.actions_box.addWidget(self.btn_sync)
 
         # Background buttons row
         bg_btns_layout = QHBoxLayout()
@@ -177,13 +174,13 @@ class DetailPanel(QFrame):
         self.btn_reset_bg.clicked.connect(self._on_reset_background_clicked)
         bg_btns_layout.addWidget(self.btn_reset_bg)
 
-        actions_box.addLayout(bg_btns_layout)
+        self.actions_box.addLayout(bg_btns_layout)
 
         # Desktop Sync button
         self.btn_sync_desktop = QPushButton("🔄 Match Desktop Wallpaper")
         self.btn_sync_desktop.setCursor(Qt.PointingHandCursor)
         self.btn_sync_desktop.clicked.connect(self._on_sync_desktop_clicked)
-        actions_box.addWidget(self.btn_sync_desktop)
+        self.actions_box.addWidget(self.btn_sync_desktop)
 
         # Advanced tools: Editor, Tweaker, Linter, Exporter
         tools_layout = QHBoxLayout()
@@ -199,7 +196,7 @@ class DetailPanel(QFrame):
         self.btn_tweak.clicked.connect(self._on_tweak_clicked)
         tools_layout.addWidget(self.btn_tweak)
 
-        actions_box.addLayout(tools_layout)
+        self.actions_box.addLayout(tools_layout)
 
         tools_layout2 = QHBoxLayout()
         tools_layout2.setSpacing(6)
@@ -214,7 +211,7 @@ class DetailPanel(QFrame):
         self.btn_export.clicked.connect(self._on_export_clicked)
         tools_layout2.addWidget(self.btn_export)
 
-        actions_box.addLayout(tools_layout2)
+        self.actions_box.addLayout(tools_layout2)
 
         # Secondary Actions (Open folder, Remove)
         secondary_layout = QHBoxLayout()
@@ -229,9 +226,13 @@ class DetailPanel(QFrame):
         self.btn_remove.clicked.connect(self._on_remove_clicked)
         secondary_layout.addWidget(self.btn_remove)
 
-        actions_box.addLayout(secondary_layout)
+        self.actions_box.addLayout(secondary_layout)
 
-        panel_layout.addLayout(actions_box)
+        self.content_layout.addLayout(self.actions_box)
+        self.content_layout.addStretch()
+
+        self.scroll_content.setWidget(content_widget)
+        panel_layout.addWidget(self.scroll_content)
 
     def _create_meta_row(self, title: str, parent_layout: QVBoxLayout) -> QLabel:
         row = QHBoxLayout()

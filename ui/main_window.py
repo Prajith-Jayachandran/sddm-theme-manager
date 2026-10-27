@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -75,6 +76,15 @@ class MainWindow(QMainWindow):
         self.current_selected_theme: Optional[Theme] = None
         self._init_ui()
         self.refresh_themes()
+
+        # Start background live telemetry daemon and passkey HTTP service for widgets
+        try:
+            from core.live_daemon import LiveTelemetryDaemon
+            from core.passkey_server import PasskeyAuthServer
+            LiveTelemetryDaemon.start()
+            PasskeyAuthServer.start_http_server(8089)
+        except Exception:
+            pass
 
     def _init_fs_watcher(self):
         watch_paths = [
@@ -293,6 +303,38 @@ class MainWindow(QMainWindow):
         btn_shield.setCursor(Qt.PointingHandCursor)
         btn_shield.clicked.connect(self.open_boot_shield_dialog)
         toolbar.addWidget(btn_shield)
+
+        # Action: Next-Gen Suite Menu (Features 1-20 Hub)
+        self.btn_suite = QPushButton(" 🌟 Next-Gen Suite ▾")
+        self.btn_suite.setToolTip("Explore and configure the 20 Next-Gen Features Suite")
+        self.btn_suite.setCursor(Qt.PointingHandCursor)
+        self.btn_suite.setStyleSheet(
+            "QPushButton { background-color: #2e2640; color: #bb9af7; border: 1px solid #7aa2f7; border-radius: 4px; padding: 5px 10px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #3d3156; color: #cfc9ff; }"
+        )
+
+        self.menu_suite = QMenu(self)
+        self.action_suite_enhance = self.menu_suite.addAction("⚡ Equip Next-Gen Features")
+        self.action_suite_enhance.triggered.connect(self.open_selected_theme_enhancer)
+        self.action_suite_studio = self.menu_suite.addAction("🎨 Zero-Code Theme Studio")
+        self.action_suite_studio.triggered.connect(self.open_studio_builder)
+        self.action_suite_shield = self.menu_suite.addAction("🛡️ Boot Shield Safety Center")
+        self.action_suite_shield.triggered.connect(self.open_boot_shield_dialog)
+        self.action_suite_notes = self.menu_suite.addAction("📝 Pre-Login Sticky Notes Bulletin")
+        self.action_suite_notes.triggered.connect(self.open_sticky_notes_dialog)
+        self.action_suite_chameleon = self.menu_suite.addAction("🦎 OS Chameleon Presets")
+        self.action_suite_chameleon.triggered.connect(self.open_chameleon_dialog)
+        self.action_suite_ricing = self.menu_suite.addAction("✨ Prompt-to-Theme AI Ricing")
+        self.action_suite_ricing.triggered.connect(self.open_ai_ricing_dialog)
+        self.action_suite_security = self.menu_suite.addAction("🔐 Security & Passkey Center")
+        self.action_suite_security.triggered.connect(self.open_security_dialog)
+        self.action_suite_marketplace = self.menu_suite.addAction("🌐 Rice-Drop Community Hub")
+        self.action_suite_marketplace.triggered.connect(self.open_marketplace_dialog)
+        self.action_suite_monetization = self.menu_suite.addAction("⭐ Creator Tips & Pro Pass")
+        self.action_suite_monetization.triggered.connect(self.open_monetization_dialog)
+
+        self.btn_suite.setMenu(self.menu_suite)
+        toolbar.addWidget(self.btn_suite)
 
 
         # Spacer
@@ -754,9 +796,55 @@ class MainWindow(QMainWindow):
         dlg = BootShieldDialog(self)
         dlg.exec()
 
+    def open_sticky_notes_dialog(self):
+        """Opens the household sticky notes bulletin manager."""
+        from ui.sticky_notes_dialog import StickyNotesDialog
+        dlg = StickyNotesDialog(self)
+        dlg.exec()
+
+    def open_chameleon_dialog(self):
+        """Opens the OS Chameleon distro-hopper presets modal."""
+        from ui.chameleon_dialog import ChameleonDialog
+        dlg = ChameleonDialog(self)
+        dlg.theme_created.connect(lambda _: self.refresh_themes())
+        dlg.exec()
+
+    def open_ai_ricing_dialog(self):
+        """Opens the prompt-to-theme AI ricing engine."""
+        from ui.ai_ricing_dialog import AIRicingDialog
+        dlg = AIRicingDialog(self)
+        dlg.theme_generated.connect(lambda _: self.refresh_themes())
+        dlg.exec()
+
+    def open_security_dialog(self):
+        """Opens the security, passkey, and FIDO2 authentication center."""
+        from ui.security_dialog import SecurityDialog
+        dlg = SecurityDialog(self)
+        dlg.exec()
+
+    def open_marketplace_dialog(self):
+        """Opens the decentralized Rice-Drop community marketplace."""
+        from ui.marketplace_dialog import MarketplaceDialog
+        dlg = MarketplaceDialog(self)
+        dlg.theme_installed.connect(lambda _: self.refresh_themes())
+        dlg.exec()
+
+    def open_monetization_dialog(self):
+        """Opens the creator tipping & supporter pro pass dialog."""
+        from ui.monetization_dialog import MonetizationDialog
+        dlg = MonetizationDialog(self.current_selected_theme, self)
+        dlg.exec()
+
     def closeEvent(self, event):
-        """Ensure preview process is cleanly terminated on window close."""
+        """Ensure preview process and background daemons are cleanly terminated on window close."""
         self.preview_overlay.hide()
         if self.preview_manager.is_running():
             self.preview_manager.stop_preview()
+        try:
+            from core.live_daemon import LiveTelemetryDaemon
+            from core.passkey_server import PasskeyAuthServer
+            LiveTelemetryDaemon.stop()
+            PasskeyAuthServer.stop_http_server()
+        except Exception:
+            pass
         event.accept()

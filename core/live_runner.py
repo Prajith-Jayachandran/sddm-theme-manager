@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QObject, QProcess, Signal
+from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, Signal
 
 
 class QMLErrorParser:
@@ -299,6 +299,9 @@ class LiveGreeterRunner(QObject):
 
         # 4. Spawn QProcess
         self._process = QProcess(self)
+        qenv = QProcessEnvironment.systemEnvironment()
+        qenv.insert("QML_XHR_ALLOW_FILE_READ", "1")
+        self._process.setProcessEnvironment(qenv)
         self._process.setProgram(greeter_bin)
         self._process.setArguments(["--test-mode", "--theme", str(theme_path)])
 

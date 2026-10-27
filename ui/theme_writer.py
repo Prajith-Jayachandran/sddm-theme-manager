@@ -510,52 +510,75 @@ Rectangle {
         opacity: 0.9
     }
 
-    // 3. Pre-Login MPRIS Media Capsule (Dynamic Island)
-    MediaCapsule {
-        id: nextgenMedia
-        anchors.horizontalCenter: parent.horizontalCenter
+    // 3. Top Unified Status Island (MPRIS Capsule + FIDO2 + HUD)
+    Row {
+        id: nextgenTopBar
         anchors.top: parent.top
-        anchors.topMargin: 20
-        z: 12
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 12
+        spacing: 12
+        z: 30
+
+        MediaCapsule {
+            id: nextgenMedia
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        Fido2Visualizer {
+            id: nextgenFido
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        SystemHUD {
+            id: nextgenHud
+            anchors.verticalCenter: parent.verticalCenter
+        }
     }
 
-    // 4. Pre-Login Household Sticky Notes
-    StickyNotesWidget {
-        id: nextgenNotes
+    // 4. Top-Right Action Pill Dock (Passkey QR + Sticky Notes + Mini-Games)
+    Row {
+        id: nextgenActionDock
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.margins: 20
-        z: 14
+        anchors.margins: 12
+        spacing: 8
+        z: 40
+
+        PasskeyWidget {
+            id: nextgenPasskey
+        }
+
+        StickyNotesWidget {
+            id: nextgenNotes
+        }
+
+        Rectangle {
+            id: nextgenGamePill
+            width: 78
+            height: 32
+            radius: 16
+            color: nextgenGameMouse.containsMouse ? "#1e293b" : Qt.rgba(0.07, 0.09, 0.15, 0.85)
+            border.color: nextgenGameMouse.containsMouse ? "#ec4899" : Qt.rgba(0.3, 0.45, 0.7, 0.4)
+            border.width: 1
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 4
+                Text { text: "🎮"; font.pixelSize: 12 }
+                Text { text: "Play"; color: "#cbd5e1"; font.bold: true; font.pixelSize: 11 }
+            }
+
+            MouseArea {
+                id: nextgenGameMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: nextgenGame.visible = !nextgenGame.visible
+            }
+        }
     }
 
-    // 5. Pre-Login Cold Boot Hardware HUD
-    SystemHUD {
-        id: nextgenHud
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 14
-        z: 15
-    }
-
-    // 6. Security & Authentication: FIDO2 & Mobile Passkey
-    Fido2Visualizer {
-        id: nextgenFido
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: 80
-        z: 16
-    }
-
-    PasskeyWidget {
-        id: nextgenPasskey
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        anchors.margins: 24
-        z: 17
-        scale: 0.85
-    }
-
-    // 7. Interactive Pre-Login Mini-Game Easter Egg
+    // 5. Interactive Pre-Login Mini-Game
     GameFlappytux {
         id: nextgenGame
         visible: false

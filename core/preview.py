@@ -120,8 +120,9 @@ class PreviewManager(QObject):
         if PolkitConfig.debug:
             print(f"[DEBUG] Launching preview: {' '.join(cmd)}")
 
-        # Inherit current graphical session environment
+        # Inherit current graphical session environment and allow local XHR reads
         env = os.environ.copy()
+        env["QML_XHR_ALLOW_FILE_READ"] = "1"
 
         try:
             self.current_process = subprocess.Popen(

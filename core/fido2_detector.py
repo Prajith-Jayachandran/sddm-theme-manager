@@ -107,71 +107,87 @@ class FIDO2Detector:
 
     @classmethod
     def generate_visualizer_qml(cls) -> str:
-        """Generates dynamic holographic FIDO2 glowing key widget for SDDM greeter."""
+        """Generates dynamic holographic FIDO2 glowing key widget for SDDM greeter with live USB detection."""
         return """import QtQuick 2.15
 
 Item {
     id: fidoRoot
-    width: 240
-    height: 56
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.top: parent.top
-    anchors.topMargin: 80
+    width: bgCard.width
+    height: bgCard.height
+    z: 28
 
-    property bool keyDetected: true
-    property bool awaitingTouch: true
-    property string vendorName: "YubiKey 5 NFC"
+    property bool keyDetected: false
+    property bool awaitingTouch: false
+    property string vendorName: "Security Key"
+
+    function refreshFido() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://127.0.0.1:8089/api/fido");
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        fidoRoot.keyDetected = !!data.detected;
+                        fidoRoot.awaitingTouch = (data.state === "awaiting_touch");
+                        fidoRoot.vendorName = data.vendor_name || (data.detected ? "Hardware Key" : "No Key Detected");
+                    } catch(e) {}
+                } else {
+                    var fXhr = new XMLHttpRequest();
+                    fXhr.open("GET", "file:///tmp/sddm-fido2.json");
+                    fXhr.onreadystatechange = function() {
+                        if (fXhr.readyState === XMLHttpRequest.DONE && fXhr.status === 200) {
+                            try {
+                                var data2 = JSON.parse(fXhr.responseText);
+                                fidoRoot.keyDetected = !!data2.detected;
+                                fidoRoot.awaitingTouch = (data2.state === "awaiting_touch");
+                                fidoRoot.vendorName = data2.vendor_name || (data2.detected ? "Hardware Key" : "No Key Detected");
+                            } catch(e) {}
+                        }
+                    };
+                    fXhr.send();
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    Timer {
+        interval: 2000
+        running: true
+        repeat: true
+        onTriggered: refreshFido()
+    }
+
+    Component.onCompleted: refreshFido()
 
     Rectangle {
         id: bgCard
-        anchors.fill: parent
-        radius: 28
+        width: contentRow.implicitWidth + 24
+        height: 28
+        radius: 14
         color: Qt.rgba(0.06, 0.08, 0.14, 0.85)
-        border.color: fidoRoot.awaitingTouch ? "#f59e0b" : (fidoRoot.keyDetected ? "#10b981" : "#475569")
-        border.width: 1.5
+        border.color: fidoRoot.awaitingTouch ? "#f59e0b" : (fidoRoot.keyDetected ? "#10b981" : Qt.rgba(0.3, 0.45, 0.7, 0.3))
+        border.width: 1
 
         Row {
+            id: contentRow
             anchors.centerIn: parent
-            spacing: 12
+            spacing: 8
 
-            // Glowing Key Icon
-            Rectangle {
-                width: 36
-                height: 36
-                radius: 18
-                color: fidoRoot.awaitingTouch ? "#78350f" : "#064e3b"
+            // Key Icon
+            Text {
+                text: "🔑"
+                font.pixelSize: 11
                 anchors.verticalCenter: parent.verticalCenter
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "🔑"
-                    font.pixelSize: 18
-                }
-
-                SequentialAnimation on opacity {
-                    running: fidoRoot.awaitingTouch
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 0.4; to: 1.0; duration: 600 }
-                    NumberAnimation { from: 1.0; to: 0.4; duration: 600 }
-                }
             }
 
-            Column {
+            Text {
+                text: fidoRoot.awaitingTouch ? "Tap Key" : (fidoRoot.keyDetected ? fidoRoot.vendorName : "FIDO2 Ready")
+                color: fidoRoot.awaitingTouch ? "#fde047" : (fidoRoot.keyDetected ? "#34d399" : "#94a3b8")
+                font.bold: fidoRoot.keyDetected || fidoRoot.awaitingTouch
+                font.pixelSize: 10
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
-
-                Text {
-                    text: fidoRoot.awaitingTouch ? "Tap Security Key Now" : fidoRoot.vendorName
-                    color: fidoRoot.awaitingTouch ? "#fde047" : "#e2e8f0"
-                    font.bold: true
-                    font.pixelSize: 12
-                }
-
-                Text {
-                    text: fidoRoot.awaitingTouch ? "Hardware touch required" : "FIDO2 / U2F Armed"
-                    color: "#94a3b8"
-                    font.pixelSize: 10
-                }
             }
         }
     }
